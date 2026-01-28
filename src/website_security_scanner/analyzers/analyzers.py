@@ -95,46 +95,34 @@ class BaseAnalyzer:
 
         # Comprehensive secret patterns matching Burp's JS Miner
         secret_patterns = [
-            (
-                r'(?:api[_-]?key|apikey|stripe_public_key_live|stripe_key)[\'":\s]*[\'"]([a-zA-Z0-9\-_]{20,})[\'"]',
-                "API Key",
-            ),
-            (
-                r'(?:secret|password|passwd|pwd)[\'":\s]*[\'"]([^\'"]{8,})[\'"]',
-                "Secret/Password",
-            ),
-            (
-                r'(?:token|auth|bearer)[\'":\s]*[\'"]([a-zA-Z0-9\-_\.]{20,})[\'"]',
-                "Token",
-            ),
-            (
-                r'(?:private[_-]?key|privatekey)[\'":\s]*[\'"]([^\'"]{20,})[\'"]',
-                "Private Key",
-            ),
-            (
-                r'(?:client[_-]?secret|clientsecret)[\'":\s]*[\'"]([a-zA-Z0-9\-_]{20,})[\'"]',
-                "Client Secret",
-            ),
-            (
-                r'(?:access[_-]?key|accesskey)[\'":\s]*[\'"]([a-zA-Z0-9\-_]{16,})[\'"]',
-                "Access Key",
-            ),
-            (
-                r'(?:aws|amazon)[_-]?(?:secret|key)[\'":\s]*[\'"]([a-zA-Z0-9+/]{20,})[\'"]',
-                "AWS Secret",
-            ),
-            (
-                r'(?:database|db)[_-]?(?:password|pass)[\'":\s]*[\'"]([^\'"]{8,})[\'"]',
-                "Database Password",
-            ),
-            (
-                r'(?:firebase|firebase_url)[\'":\s]*[\'"](https://[a-zA-Z0-9\-_]+\.firebaseio\.com)[\'"]',
-                "Cloud Resource (Firebase)",
-            ),
-            (
-                r'(?:s3_bucket|s3_url)[\'":\s]*[\'"](https://[a-zA-Z0-9\-_]+\.s3\.amazonaws\.com[^\'"]*)[\'"]',
-                "Cloud Resource (S3)",
-            ),
+            # Burp Suite JS Miner compatible patterns
+            (r'(?:api[_-]?key|apikey|stripe_public_key_live|stripe_key)[\'":\s]*[\'"]([a-zA-Z0-9\-_]{20,})[\'"]', "API Key"),
+            (r'(?:secret|password|pwd|passwd)[\'":\s]*[\'"]([^\s\'"]{8,})[\'"]', "Password/Credential"),
+            (r'(?:token|auth[_-]?token|access[_-]?token)[\'":\s]*[\'"]([a-zA-Z0-9\-_.]{20,})[\'"]', "Authentication Token"),
+            (r'(?:private[_-]?key|privateKey|PRIVATE[_-]?KEY)[\'":\s]*[\'"](-----BEGIN [A-Z ]+-----.*?-----END [A-Z ]+-----)[\'"]', "Private Key"),
+            (r'(?:aws[_-]?access[_-]?key|aws_secret_key)[\'":\s]*[\'"]([A-Za-z0-9/+=]{40})[\'"]', "AWS Secret Key"),
+            (r'(?:bearer\s+)([a-zA-Z0-9\-_.]{50,})', "Bearer Token"),
+            (r'(?:x-api-key|Authorization:\s*Bearer\s+)([a-zA-Z0-9\-_.]{20,})', "API Key/Token"),
+            (r'(?:client[_-]?secret|client_secret)[\'":\s]*[\'"]([a-zA-Z0-9\-_.]{20,})[\'"]', "Client Secret"),
+            (r'(?:google[_-]?api[_-]?key)[\'":\s]*[\'"]([AIzaSy0-9A-Za-z\-_]{35})[\'"]', "Google API Key"),
+            (r'(?:firebase[_-]?api[_-]?key)[\'":\s]*[\'"]([AIzaSy0-9A-Za-z\-_]{35})[\'"]', "Firebase API Key"),
+            (r'(?:jwt|jsonwebtoken)[\'":\s]*[\'"]([a-zA-Z0-9\-_.]{50,})[\'"]', "JWT Token"),
+            (r'(?:stripe[_-]?secret[_-]?key)[\'":\s]*[\'"](sk_[a-zA-Z0-9]{24,})[\'"]', "Stripe Secret Key"),
+            (r'(?:stripe[_-]?publishable[_-]?key)[\'":\s]*[\'"](pk_[a-zA-Z0-9]{24,})[\'"]', "Stripe Publishable Key"),
+            (r'(?:mailchimp[_-]?api[_-]?key)[\'":\s]*[\'"]([a-f0-9]{32}-[a-f0-9]{8})[\'"]', "Mailchimp API Key"),
+            (r'(?:github[_-]?token|github[_-]?api[_-]?key)[\'":\s]*[\'"](ghp_[a-zA-Z0-9]{36})[\'"]', "GitHub Token"),
+            (r'(?:twilio[_-]?account[_-]?sid|twilio[_-]?auth[_-]?token)[\'":\s]*[\'"]([a-f0-9]{32})[\'"]', "Twilio Credential"),
+            (r'(?:slack[_-]?token|slack[_-]?api[_-]?key)[\'":\s]*[\'"](xox[baprs]-[0-9]{10,}-[0-9]{10,}-[a-z0-9]{24,})[\'"]', "Slack Token"),
+            (r'(?:redis[_-]?url|redis[_-]?connection)[\'":\s]*[\'"](redis://[^\\s\'"]+)[\'"]', "Redis Connection"),
+            (r'(?:database[_-]?url|db[_-]?url|postgres[_-]?url)[\'":\s]*[\'"](postgresql://[^\\s\'"]+)[\'"]', "Database URL"),
+            (r'(?:mysql[_-]?url|mysql[_-]?connection)[\'":\s]*[\'"](mysql://[^\\s\'"]+)[\'"]', "MySQL Connection"),
+            (r'(?:mongodb[_-]?url|mongo[_-]?connection)[\'":\s]*[\'"](mongodb://[^\\s\'"]+)[\'"]', "MongoDB Connection"),
+            (r'(?:azure[_-]?storage[_-]?key|azure[_-]?account[_-]?key)[\'":\s]*[\'"]([A-Za-z0-9+/]{40,})[\'"]', "Azure Storage Key"),
+            (r'(?:stripe_public_key_live|stripe_key_live)[\'":\s]*[\'"](pk_live_[a-zA-Z0-9]{24,})[\'"]', "Stripe Live Key"),
+            (r'(?:twilio[_-]?api[_-]?key)[\'":\s]*[\'"](SK[a-f0-9]{32})[\'"]', "Twilio API Key"),
+            (r'(?:sendgrid[_-]?api[_-]?key)[\'":\s]*[\'"](SG\.[a-zA-Z0-9\-_.]{16,}\.[a-zA-Z0-9\-_.]{16,})[\'"]', "SendGrid API Key"),
+            (r'(?:mapbox[_-]?access[_-]?token)[\'":\s]*[\'"](pk\.[a-zA-Z0-9\.]{60,})[\'"]', "Mapbox Token"),
+            (r'(?:paypal[_-]?client[_-]?id|paypal[_-]?client[_-]?secret)[\'":\s]*[\'"]([a-zA-Z0-9\-_.]{20,})[\'"]', "PayPal Credential"),
         ]
 
         for pattern, secret_type in secret_patterns:
@@ -541,13 +529,18 @@ class BubbleAnalyzer(BaseAnalyzer):
         self._check_information_disclosure(js_content, html_content, response)
         self._check_reflected_input(url, response, html_content)
         self._check_cacheable_https(response, url)
-        self._check_open_redirection(js_content)
-        self._check_ajax_header_manipulation(js_content)
-        self._check_linkfinder(js_content)
-        self._check_hsts(response)
-        self._check_content_type_options(response)
-        self._check_vulnerable_dependencies(js_content)
-        self._check_robots_txt(url)
+        self._check_base64_data(url, html_content)
+        self._check_path_relative_stylesheets(soup)
+        
+        # Enhanced Bubble-specific vulnerability checks
+        self._check_bubble_vulnerabilities(js_content, url, response, soup)
+        
+        # Burp Suite compatible enhanced checks
+        self._check_strict_transport_security(response)
+        self._check_detailed_error_messages(response, html_content)
+        self._check_secret_input_headers(url, response)
+        self._check_private_ip_disclosure(html_content)
+        self._check_tls_certificate_issues(url)
 
         return {
             "api_endpoints": self.api_endpoints,
@@ -578,6 +571,111 @@ class BubbleAnalyzer(BaseAnalyzer):
                 pass  # Skip if unable to fetch external script
 
         return js_content
+
+    def _check_bubble_vulnerabilities(self, js_content: str, url: str, response: requests.Response, soup: BeautifulSoup):
+        """Enhanced Bubble-specific vulnerability checks matching Burp Suite findings"""
+        
+        # Check for Social Security Numbers
+        ssn_pattern = r'\b\d{3}-\d{2}-\d{4}\b'
+        ssn_matches = re.findall(ssn_pattern, js_content)
+        if ssn_matches:
+            self.add_vulnerability(
+                "Social security numbers disclosed",
+                "Critical",
+                "Social Security Numbers found in client-side code",
+                f"SSNs found: {len(ssn_matches)} instances",
+                "Remove SSNs from client-side code immediately. This is a severe privacy violation.",
+                confidence="Certain",
+                category="Information Disclosure",
+                owasp="A01:2021 – Broken Access Control",
+                cwe=["CWE-359"]
+            )
+        
+        # Check for Credit Card Numbers
+        cc_pattern = r'\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|6(?:011|5[0-9]{2})[0-9]{12}|(?:2131|1800|35\d{3})\d{11})\b'
+        cc_matches = re.findall(cc_pattern, js_content)
+        if cc_matches:
+            self.add_vulnerability(
+                "Credit card numbers disclosed",
+                "Critical",
+                "Credit Card Numbers found in client-side code",
+                f"CC numbers found: {len(cc_matches)} instances",
+                "Remove credit card numbers from client-side code immediately. This violates PCI DSS compliance.",
+                confidence="Certain",
+                category="Information Disclosure",
+                owasp="A01:2021 – Broken Access Control",
+                cwe=["CWE-359"]
+            )
+        
+        # Check for open redirection patterns
+        redirect_patterns = [
+            r'window\.location\s*=\s*["\']?[\+\s]*["\']?[^"\']*["\']?',
+            r'document\.location\s*=\s*["\']?[^"\']*["\']?',
+            r'location\.href\s*=\s*["\']?[^"\']*["\']?',
+            r'location\.replace\(\s*["\']?[^"\']*["\']?\)',
+        ]
+        
+        for pattern in redirect_patterns:
+            matches = re.findall(pattern, js_content, re.IGNORECASE)
+            for match in matches:
+                # Check if redirect target contains user input or external domains
+                if any(unsafe in match.lower() for unsafe in ['http', 'window', 'document', 'user', 'input', 'getparam']):
+                    self.add_vulnerability(
+                        "Open redirection (DOM-based)",
+                        "Medium",
+                        "Potential open redirection vulnerability in client-side JavaScript",
+                        match[:100] + "..." if len(match) > 100 else match,
+                        "Validate and sanitize all redirect targets. Use whitelist of allowed destinations.",
+                        confidence="Firm",
+                        category="DOM-based",
+                        owasp="A01:2021 – Broken Access Control",
+                        cwe=["CWE-601"]
+                    )
+        
+        # Check for AJAX header manipulation
+        ajax_patterns = [
+            r'XMLHttpRequest.*setRequestHeader',
+            r'fetch.*headers.*=',
+            r'\.setRequestHeader.*["\']Authorization["\']',
+            r'\.setRequestHeader.*["\']Cookie["\']',
+        ]
+        
+        for pattern in ajax_patterns:
+            if re.search(pattern, js_content, re.IGNORECASE):
+                self.add_vulnerability(
+                    "Ajax request header manipulation (DOM-based)",
+                    "Low",
+                    "AJAX requests that manipulate headers detected",
+                    pattern,
+                    "Ensure proper validation of header manipulation to prevent request forgery attacks.",
+                    confidence="Firm",
+                    category="DOM-based",
+                    owasp="A01:2021 – Broken Access Control",
+                    cwe=["CWE-116"]
+                )
+        
+        # Check for vulnerable JavaScript dependencies
+        vuln_libs = [
+            r'jquery[\s-]?([0-3]\.[0-9]+\.[0-9]+)',  # Old jQuery versions
+            r'angularjs?[\s-]?([12]\.[0-9]+\.[0-9]+)',  # Old Angular versions
+            r'bootstrap[\s-]?([3-4]\.[0-9]+\.[0-9]+)',  # Old Bootstrap versions
+        ]
+        
+        for pattern in vuln_libs:
+            matches = re.findall(pattern, js_content, re.IGNORECASE)
+            for match in matches:
+                version = match[0] if isinstance(match, tuple) else match
+                self.add_vulnerability(
+                    "Vulnerable JavaScript dependency",
+                    "High",
+                    f"Potentially vulnerable JavaScript library detected: {pattern.split('[')[0]} version {version}",
+                    f"Library: {pattern.split('[')[0]}, Version: {version}",
+                    "Update to the latest secure version of the library.",
+                    confidence="Firm",
+                    category="Third-party Risk",
+                    owasp="A06:2021 – Vulnerable and Outdated Components",
+                    cwe=["CWE-1104"]
+                )
 
     def _analyze_api_endpoints(self, js_content: str):
         """Analyze Bubble API endpoints for security issues"""
@@ -836,6 +934,13 @@ class OutSystemsAnalyzer(BaseAnalyzer):
 
         # Check for Base64 encoded data
         self._check_base64_data(url, html_content)
+
+        # Enhanced vulnerability checks for Burp Suite compatibility
+        self._check_strict_transport_security(response)
+        self._check_detailed_error_messages(response, html_content)
+        self._check_secret_input_headers(url, response)
+        self._check_private_ip_disclosure(html_content)
+        self._check_tls_certificate_issues(url)
 
         return {
             "rest_apis": self.rest_apis,
@@ -1336,6 +1441,187 @@ class SecurityReportGenerator:
             score -= self.vulnerability_weights.get(severity, 1)
 
         return max(0, score), severity_counts
+
+    def _check_strict_transport_security(self, response: requests.Response):
+        """Check for Strict Transport Security implementation"""
+        hsts_header = response.headers.get("Strict-Transport-Security", "")
+        if not hsts_header:
+            self.add_vulnerability(
+                "Strict transport security not enforced",
+                "Low",
+                "HTTP Strict Transport Security (HSTS) is not enabled on this server",
+                "HSTS header not present",
+                "Implement HSTS to prevent SSL stripping attacks. Add 'Strict-Transport-Security: max-age=31536000; includeSubDomains; preload' header.",
+                confidence="Certain",
+                category="Transport Security",
+                owasp="A02:2021 – Cryptographic Failures",
+                cwe=["CWE-319", "CWE-523"]
+            )
+
+    def _check_detailed_error_messages(self, response: requests.Response, html_content: str):
+        """Check for detailed error messages that could leak information"""
+        error_patterns = [
+            r"exception in|exception caught|stack trace|at\s+\w+\.\w+\(",
+            r"sql\s+exception|database\s+error|ora-\d+|mysql_error",
+            r"error\s+in|warning\s+in|fatal\s+error|php\s+error",
+            r"null\s+pointer|array\s+index|out\s+of\s+bounds",
+            r"system\.out\.print|console\.error|debug\s+trace",
+            r"debug\s+information|debug\s+mode|development\s+error",
+            r"internal\s+server\s+error\s+500|bad\s+gateway\s+502|service\s+unavailable\s+503",
+        ]
+        
+        for pattern in error_patterns:
+            matches = re.findall(pattern, html_content, re.IGNORECASE)
+            if matches:
+                self.add_vulnerability(
+                    "Detailed Error Messages Revealed",
+                    "Medium",
+                    "Application reveals detailed error information that could aid attackers",
+                    f"Found {len(matches)} error message(s)",
+                    "Configure generic error pages and log detailed errors server-side only.",
+                    confidence="Firm",
+                    category="Information Disclosure",
+                    owasp="A01:2021 – Broken Access Control",
+                    cwe=["CWE-200", "CWE-209"]
+                )
+                break
+
+    def _check_path_relative_stylesheets(self, soup: BeautifulSoup):
+        """Check for path-relative stylesheet imports"""
+        link_elements = soup.find_all("link", {"rel": "stylesheet"})
+        for link in link_elements:
+            href = link.get("href", "")
+            if href and not href.startswith(("http://", "https://", "//", "/", "data:")):
+                # Path-relative import
+                self.add_vulnerability(
+                    "Path-relative style sheet import",
+                    "Low",
+                    "Stylesheet is imported using a path-relative URL, which can be vulnerable to path traversal",
+                    f"Relative stylesheet path: {href}",
+                    "Use absolute paths or ensure proper path validation to prevent traversal attacks.",
+                    confidence="Firm",
+                    category="Insecure Configuration",
+                    owasp="A01:2021 – Broken Access Control",
+                    cwe=["CWE-22"]
+                )
+
+    def _check_secret_input_headers(self, url: str, response: requests.Response):
+        """Check for potential secret input via headers"""
+        headers_to_check = [
+            "X-Forwarded-Host",
+            "X-Original-URL", 
+            "X-Rewrite-URL",
+            "X-Originating-IP",
+            "X-Real-IP",
+            "X-Client-IP"
+        ]
+        
+        found_secrets = []
+        for header in headers_to_check:
+            value = response.headers.get(header, "")
+            if value and any(char in value.lower() for char in ["@", ":", "/", "\\"]):
+                # Potential command injection or SSRF
+                if any(pattern in value.lower() for pattern in ["localhost", "127.0.0.1", "169.254", "10.", "192.168", "172."]):
+                    found_secrets.append(f"{header}: {value}")
+        
+        if found_secrets:
+            self.add_vulnerability(
+                "Secret input: header",
+                "Medium",
+                "Potentially exploitable header input detected",
+                f"Headers: {', '.join(found_secrets)}",
+                "Validate and sanitize all header inputs to prevent injection attacks.",
+                confidence="Firm",
+                category="Input Validation",
+                owasp="A03:2021 – Injection",
+                cwe=["CWE-94", "CWE-20"]
+            )
+
+    def _check_private_ip_disclosure(self, content: str):
+        """Check for private IP addresses disclosure"""
+        private_ip_patterns = [
+            r"\b127\.\d{1,3}\.\d{1,3}\.\d{1,3}\b",  # Loopback
+            r"\b10\.\d{1,3}\.\d{1,3}\.\d{1,3}\b",      # Private A
+            r"\b192\.168\.\d{1,3}\.\d{1,3}\b",          # Private C
+            r"\b172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}\b",  # Private B
+            r"\b169\.254\.\d{1,3}\.\d{1,3}\b",          # Link-local
+        ]
+        
+        found_ips = []
+        for pattern in private_ip_patterns:
+            matches = re.findall(pattern, content)
+            found_ips.extend(matches)
+        
+        if found_ips:
+            unique_ips = list(set(found_ips))[:5]  # Limit to 5 unique IPs
+            self.add_vulnerability(
+                "Private IP addresses disclosed",
+                "Low",
+                "Private/internal IP addresses are disclosed in the response",
+                f"IPs found: {', '.join(unique_ips)}",
+                "Remove internal IP addresses from responses to prevent network reconnaissance.",
+                confidence="Certain",
+                category="Information Disclosure",
+                owasp="A01:2021 – Broken Access Control",
+                cwe=["CWE-200"]
+            )
+
+    def _check_tls_certificate_issues(self, url: str):
+        """Check for TLS certificate problems"""
+        try:
+            import ssl
+            import socket
+            from urllib.parse import urlparse
+            
+            parsed = urlparse(url)
+            if parsed.scheme != 'https':
+                return
+                
+            hostname = parsed.hostname
+            port = parsed.port or 443
+            
+            context = ssl.create_default_context()
+            with socket.create_connection((hostname, port), timeout=10) as sock:
+                with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+                    cert = ssock.getpeercert()
+                    
+                    # Check certificate validity
+                    if not cert:
+                        self.add_vulnerability(
+                            "TLS certificate",
+                            "Medium",
+                            "Server's TLS certificate could not be validated",
+                            "Certificate validation failed",
+                            "Install a valid TLS certificate from a trusted CA.",
+                            confidence="Certain",
+                            category="Transport Security",
+                            owasp="A02:2021 – Cryptographic Failures",
+                            cwe=["CWE-295", "CWE-326"]
+                        )
+                        
+                    # Check expiration
+                    if cert:
+                        import datetime
+                        expiry = cert.get('notAfter')
+                        if expiry:
+                            try:
+                                exp_date = datetime.datetime.strptime(expiry, "%b %d %H:%M:%S %Y %Z")
+                                if exp_date < datetime.datetime.now():
+                                    self.add_vulnerability(
+                                        "TLS certificate expired",
+                                        "Medium",
+                                        "TLS certificate has expired",
+                                        f"Expired on: {expiry}",
+                                        "Renew the TLS certificate immediately.",
+                                        confidence="Certain",
+                                        category="Transport Security",
+                                        owasp="A02:2021 – Cryptographic Failures",
+                                        cwe=["CWE-295"]
+                                    )
+                            except:
+                                pass  # Date parsing failed, skip
+        except:
+            pass  # SSL check failed, skip
 
     def generate_executive_summary(
         self, analysis_results: Dict[str, Any]
