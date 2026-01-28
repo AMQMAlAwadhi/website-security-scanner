@@ -24,6 +24,14 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 
+from .analyzers.analyzers import (
+    AirtableAnalyzer,
+    BubbleAnalyzer,
+    GenericWebAnalyzer,
+    OutSystemsAnalyzer,
+    SecurityReportGenerator,
+)
+
 # Suppress SSL warnings for testing
 warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 
@@ -174,142 +182,65 @@ class LowCodeSecurityScanner:
 
     def analyze_bubble_app(self, url, response):
         """Specific analysis for Bubble.io applications"""
-        print("[+] Analyzing Bubble.io application...")
-
-        analysis = {
-            "bubble_specific": {
-                "api_endpoints_found": [],
-                "workflow_exposure": [],
-                "database_exposure": [],
-                "privacy_rules_bypass": [],
-            }
-        }
-
+        print("[+] Analyzing Bubble.io application using BubbleAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
+        analyzer = BubbleAnalyzer(self.session)
+        results = analyzer.analyze(url, response, soup)
 
-        # Look for Bubble-specific patterns
-        scripts = soup.find_all("script")
-        for script in scripts:
-            if script.string:
-                # Check for API endpoints
-                api_patterns = re.findall(r'api/1\.1/wf/[^"\']+', script.string)
-                analysis["bubble_specific"]["api_endpoints_found"].extend(api_patterns)
-
-                # Check for exposed data structures
-                data_patterns = re.findall(r"Thing\s*:\s*{[^}]+}", script.string)
-                if data_patterns:
-                    analysis["bubble_specific"]["database_exposure"].append(
-                        "Potential database schema exposure detected"
-                    )
-
-        # Check for common Bubble vulnerabilities
-        analysis["vulnerabilities"] = self.check_bubble_vulnerabilities(url, soup)
-
-        return analysis
+        # Map BubbleAnalyzer findings to the format expected by scanner
+        return {
+            "bubble_specific": {
+                "api_endpoints_found": results.get("api_endpoints", []),
+                "workflow_exposure": results.get("workflow_patterns", []),
+                "database_exposure": results.get("database_schemas", []),
+                "privacy_rules": results.get("privacy_rules", []),
+            },
+            "vulnerabilities": results.get("vulnerabilities", []),
+        }
 
     def analyze_outsystems_app(self, url, response):
         """Specific analysis for OutSystems applications"""
-        print("[+] Analyzing OutSystems application...")
-
-        analysis = {
-            "outsystems_specific": {
-                "rest_apis_found": [],
-                "screen_actions_found": [],
-                "entity_exposure": [],
-                "role_bypass_potential": [],
-            }
-        }
-
+        print("[+] Analyzing OutSystems application using OutSystemsAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
+        analyzer = OutSystemsAnalyzer(self.session)
+        results = analyzer.analyze(url, response, soup)
 
-        # Look for OutSystems-specific patterns
-        scripts = soup.find_all("script")
-        for script in scripts:
-            if script.string:
-                # Check for REST API calls
-                rest_patterns = re.findall(r'/rest/[^"\']+', script.string)
-                analysis["outsystems_specific"]["rest_apis_found"].extend(rest_patterns)
-
-                # Check for screen actions
-                action_patterns = re.findall(r'ScreenAction_[^"\']+', script.string)
-                analysis["outsystems_specific"]["screen_actions_found"].extend(
-                    action_patterns
-                )
-
-        # Check for OutSystems-specific vulnerabilities
-        analysis["vulnerabilities"] = self.check_outsystems_vulnerabilities(url, soup)
-
-        return analysis
+        return {
+            "outsystems_specific": {
+                "rest_apis_found": results.get("rest_apis", []),
+                "screen_actions_found": results.get("screen_actions", []),
+                "entities": results.get("entities", []),
+            },
+            "vulnerabilities": results.get("vulnerabilities", []),
+        }
 
     def analyze_airtable_app(self, url, response):
         """Specific analysis for Airtable applications"""
-        print("[+] Analyzing Airtable application...")
-
-        analysis = {
-            "airtable_specific": {
-                "base_id_exposure": [],
-                "api_key_exposure": [],
-                "table_structure_exposure": [],
-                "view_permissions": [],
-            }
-        }
-
+        print("[+] Analyzing Airtable application using AirtableAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
+        analyzer = AirtableAnalyzer(self.session)
+        results = analyzer.analyze(url, response, soup)
 
-        # Look for Airtable-specific patterns
-        scripts = soup.find_all("script")
-        for script in scripts:
-            if script.string:
-                # Check for base IDs
-                base_patterns = re.findall(r"app[A-Za-z0-9]{14}", script.string)
-                analysis["airtable_specific"]["base_id_exposure"].extend(base_patterns)
-
-                # Check for potential API key exposure
-                key_patterns = re.findall(r"key[A-Za-z0-9]{14}", script.string)
-                analysis["airtable_specific"]["api_key_exposure"].extend(key_patterns)
-
-        # Check for Airtable-specific vulnerabilities
-        analysis["vulnerabilities"] = self.check_airtable_vulnerabilities(url, soup)
-
-        return analysis
+        return {
+            "airtable_specific": {
+                "base_id_exposure": results.get("base_ids", []),
+                "api_key_exposure": results.get("api_keys", []),
+                "table_structure_exposure": results.get("table_ids", []),
+            },
+            "vulnerabilities": results.get("vulnerabilities", []),
+        }
 
     def analyze_generic_app(self, url, response):
         """Generic analysis for unknown platforms"""
-        print("[+] Performing generic security analysis...")
-
-        analysis = {
-            "generic_analysis": {
-                "forms_found": [],
-                "input_fields": [],
-                "external_links": [],
-                "javascript_libraries": [],
-            }
-        }
-
+        print("[+] Performing generic security analysis using GenericWebAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
+        analyzer = GenericWebAnalyzer(self.session)
+        results = analyzer.analyze(url, response, soup)
 
-        # Analyze forms
-        forms = soup.find_all("form")
-        for form in forms:
-            form_analysis = {
-                "action": form.get("action", ""),
-                "method": form.get("method", "GET"),
-                "inputs": [],
-            }
-
-            inputs = form.find_all(["input", "textarea", "select"])
-            for inp in inputs:
-                form_analysis["inputs"].append(
-                    {
-                        "type": inp.get("type", "text"),
-                        "name": inp.get("name", ""),
-                        "required": inp.has_attr("required"),
-                    }
-                )
-
-            analysis["generic_analysis"]["forms_found"].append(form_analysis)
-
-        return analysis
+        return {
+            "generic_analysis": results.get("generic_findings", {}),
+            "vulnerabilities": results.get("vulnerabilities", []),
+        }
 
     def check_common_vulnerabilities(self, url, response):
         """Check for common web vulnerabilities"""
