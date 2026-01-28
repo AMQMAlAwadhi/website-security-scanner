@@ -41,16 +41,455 @@ class BaseAnalyzer:
         description: str,
         evidence: str = "",
         recommendation: str = "",
+        confidence: str = "Firm",
+        category: str = "General",
+        owasp: str = "N/A",
+        cwe: List[str] = None,
     ):
-        """Add a vulnerability to the findings"""
+        """Add a vulnerability to the findings with detailed metadata for professional reporting"""
         vulnerability = {
             "type": vuln_type,
+            "title": vuln_type,  # Using type as title for consistency
             "severity": severity,
             "description": description,
             "evidence": evidence,
-            "recommendation": recommendation,
+            "remediation": recommendation,
+            "confidence": confidence,
+            "category": category,
+            "owasp": owasp,
+            "cwe": cwe or ["N/A"],
+            "impact": "Potential compromise of application security and data integrity.",
         }
         self.vulnerabilities.append(vulnerability)
+
+    def _check_session_tokens_in_url(self, url: str):
+        """Check for session tokens in URL parameters"""
+        parsed_url = urlparse(url)
+        query_params = parsed_url.query
+
+        if not query_params:
+            return
+
+        # Patterns that indicate session tokens
+        session_patterns = [
+            r"session[_-]?(?:id|code|state|token)",
+            r"(?:access|auth)[_-]?token",
+            r"(?:state|code|nonce)=[\w\-\.]+",
+            r"(?:client|tab)[_-]id",
+        ]
+
+        for pattern in session_patterns:
+            if re.search(pattern, query_params, re.IGNORECASE):
+                self.add_vulnerability(
+                    "Session Token in URL",
+                    "Medium",
+                    "Session token or authentication parameter found in URL query string",
+                    f"URL contains session-like parameter: {url[:100]}...",
+                    "Transmit session tokens in HTTP cookies or POST body, not in URLs. "
+                    "URLs may be logged, bookmarked, or leaked via Referer headers.",
+                )
+                break
+
+    def _check_secrets_in_javascript(self, js_content: str, url: str):
+        """Check for hardcoded secrets and credentials in JavaScript"""
+
+        # Comprehensive secret patterns matching Burp's JS Miner
+        secret_patterns = [
+            (
+                r'(?:api[_-]?key|apikey|stripe_public_key_live|stripe_key)[\'":\s]*[\'"]([a-zA-Z0-9\-_]{20,})[\'"]',
+                "API Key",
+            ),
+            (
+                r'(?:secret|password|passwd|pwd)[\'":\s]*[\'"]([^\'"]{8,})[\'"]',
+                "Secret/Password",
+            ),
+            (
+                r'(?:token|auth|bearer)[\'":\s]*[\'"]([a-zA-Z0-9\-_\.]{20,})[\'"]',
+                "Token",
+            ),
+            (
+                r'(?:private[_-]?key|privatekey)[\'":\s]*[\'"]([^\'"]{20,})[\'"]',
+                "Private Key",
+            ),
+            (
+                r'(?:client[_-]?secret|clientsecret)[\'":\s]*[\'"]([a-zA-Z0-9\-_]{20,})[\'"]',
+                "Client Secret",
+            ),
+            (
+                r'(?:access[_-]?key|accesskey)[\'":\s]*[\'"]([a-zA-Z0-9\-_]{16,})[\'"]',
+                "Access Key",
+            ),
+            (
+                r'(?:aws|amazon)[_-]?(?:secret|key)[\'":\s]*[\'"]([a-zA-Z0-9+/]{20,})[\'"]',
+                "AWS Secret",
+            ),
+            (
+                r'(?:database|db)[_-]?(?:password|pass)[\'":\s]*[\'"]([^\'"]{8,})[\'"]',
+                "Database Password",
+            ),
+            (
+                r'(?:firebase|firebase_url)[\'":\s]*[\'"](https://[a-zA-Z0-9\-_]+\.firebaseio\.com)[\'"]',
+                "Cloud Resource (Firebase)",
+            ),
+            (
+                r'(?:s3_bucket|s3_url)[\'":\s]*[\'"](https://[a-zA-Z0-9\-_]+\.s3\.amazonaws\.com[^\'"]*)[\'"]',
+                "Cloud Resource (S3)",
+            ),
+        ]
+
+        for pattern, secret_type in secret_patterns:
+            matches = re.findall(pattern, js_content, re.IGNORECASE)
+            for match in matches:
+                # Skip common false positives
+                if match.lower() in [
+                    "password",
+                    "secret",
+                    "token",
+                    "key",
+                    "xxxx",
+                    "****",
+                    "placeholder",
+                ]:
+                    continue
+                if len(match) > 5:
+                    self.add_vulnerability(
+                        f"[JS Miner] {secret_type}",
+                        "High" if "Key" in secret_type or "Secret" in secret_type else "Medium",
+                        f"Hardcoded {secret_type.lower()} found in JavaScript code",
+                        f"{secret_type}: {match[:30]}... (found in {url})",
+                        f"Remove hardcoded {secret_type.lower()} from client-side code. Use environment variables or secure backend configuration.",
+                        confidence="Certain",
+                        category="Information Exposure",
+                        owasp="A01:2021-Broken Access Control",
+                        cwe=["CWE-798"],
+                    )
+
+    def _check_cookie_security(self, response: requests.Response):
+        """Check for cookie security issues"""
+
+        raw_cookies = []
+        for header_name, header_value in response.headers.items():
+            if header_name.lower() == "set-cookie":
+                raw_cookies.append(header_value)
+
+        for cookie_str in raw_cookies:
+            cookie_parts = [p.strip().lower() for p in cookie_str.split(";")]
+            cookie_name = cookie_str.split("=")[0] if "=" in cookie_str else "unknown"
+
+            # Check for HttpOnly flag
+            if "httponly" not in cookie_parts:
+                self.add_vulnerability(
+                    "Cookie without HttpOnly flag set",
+                    "Low",
+                    f"Cookie '{cookie_name}' does not have HttpOnly flag set, making it accessible via JavaScript",
+                    f"Cookie: {cookie_name}",
+                    "Set HttpOnly flag on all cookies that don't need to be accessed by JavaScript.",
+                    confidence="Certain",
+                    category="Insecure Configuration",
+                    owasp="A05:2021-Security Misconfiguration",
+                    cwe=["CWE-1004"],
+                )
+
+            # Check for Secure flag on HTTPS
+            if "secure" not in cookie_parts:
+                self.add_vulnerability(
+                    "Cookie without Secure flag set",
+                    "Medium",
+                    f"Cookie '{cookie_name}' does not have Secure flag set, allowing transmission over HTTP",
+                    f"Cookie: {cookie_name}",
+                    "Set Secure flag on all cookies to ensure they are only transmitted over HTTPS.",
+                    confidence="Certain",
+                    category="Insecure Configuration",
+                    owasp="A05:2021-Security Misconfiguration",
+                    cwe=["CWE-614"],
+                )
+
+            # Check for SameSite attribute
+            if not any(p.startswith("samesite") for p in cookie_parts):
+                self.add_vulnerability(
+                    "Cookie without SameSite attribute",
+                    "Low",
+                    f"Cookie '{cookie_name}' does not have SameSite attribute, making it vulnerable to CSRF",
+                    f"Cookie: {cookie_name}",
+                    "Set SameSite attribute (Strict or Lax) to prevent CSRF attacks.",
+                    confidence="Certain",
+                    category="Insecure Configuration",
+                    owasp="A01:2021-Broken Access Control",
+                    cwe=["CWE-1275"],
+                )
+
+    def _check_csp_policy(self, response: requests.Response):
+        """Check Content Security Policy for security issues"""
+
+        csp_header = response.headers.get("Content-Security-Policy", "")
+
+        if not csp_header:
+            self.add_vulnerability(
+                "Missing Content Security Policy",
+                "Medium",
+                "No Content-Security-Policy header found",
+                "CSP header not present",
+                "Implement a Content Security Policy to prevent XSS and other injection attacks.",
+            )
+            return
+
+        # Check for unsafe-inline in script-src
+        if "'unsafe-inline'" in csp_header and "script-src" in csp_header:
+            self.add_vulnerability(
+                "Content Security Policy: allows untrusted script execution",
+                "Medium",
+                "CSP allows 'unsafe-inline' scripts, which permits inline JavaScript execution",
+                f"CSP: {csp_header[:100]}...",
+                "Remove 'unsafe-inline' from script-src directive. Use nonces or hashes for inline scripts.",
+            )
+
+        # Check for unsafe-inline in style-src
+        if "'unsafe-inline'" in csp_header and "style-src" in csp_header:
+            self.add_vulnerability(
+                "Content Security Policy: allows untrusted style execution",
+                "Low",
+                "CSP allows 'unsafe-inline' styles, which permits inline CSS",
+                f"CSP: {csp_header[:100]}...",
+                "Remove 'unsafe-inline' from style-src directive. Use nonces or hashes for inline styles.",
+            )
+
+        # Check for missing or permissive form-action
+        if "form-action" not in csp_header:
+            self.add_vulnerability(
+                "Content Security Policy: allows form hijacking",
+                "Low",
+                "CSP does not restrict form submission targets via form-action directive",
+                "No form-action directive found",
+                "Add 'form-action' directive to CSP to restrict where forms can be submitted.",
+            )
+
+    def _check_clickjacking(self, response: requests.Response):
+        """Check for clickjacking protection"""
+
+        x_frame_options = response.headers.get("X-Frame-Options", "")
+        csp_header = response.headers.get("Content-Security-Policy", "")
+
+        # Check for frame-ancestors in CSP
+        has_frame_ancestors = "frame-ancestors" in csp_header
+
+        if not x_frame_options and not has_frame_ancestors:
+            self.add_vulnerability(
+                "Frameable response (potential Clickjacking)",
+                "Medium",
+                "Response can be framed - no X-Frame-Options or CSP frame-ancestors directive",
+                "Missing both X-Frame-Options header and CSP frame-ancestors",
+                "Add X-Frame-Options: DENY or SAMEORIGIN header.",
+            )
+
+    def _check_information_disclosure(
+        self, js_content: str, html_content: str, response: requests.Response
+    ):
+        """Check for information disclosure vulnerabilities"""
+
+        # Check for email addresses
+        email_pattern = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
+        emails = re.findall(email_pattern, js_content + html_content)
+        if emails:
+            unique_emails = list(set(emails))[:5]
+            self.add_vulnerability(
+                "Email addresses disclosed",
+                "Information",
+                f"Email addresses found in page content ({len(unique_emails)} unique)",
+                f"Examples: {', '.join(unique_emails)}",
+                "Consider obscuring or removing email addresses.",
+            )
+
+        # Check for SSN
+        ssn_pattern = r"\b\d{3}-\d{2}-\d{4}\b"
+        ssns = re.findall(ssn_pattern, js_content + html_content)
+        if ssns:
+            self.add_vulnerability(
+                "Social security numbers disclosed",
+                "High",
+                "Potential Social Security Numbers (SSN) found in content",
+                f"Matches found: {len(ssns)}",
+                "Remove sensitive identification numbers from client-side code.",
+            )
+
+        # Check for Credit Card Numbers
+        cc_pattern = r"\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|6(?:011|5[0-9]{2})[0-9]{12}|(?:2131|1800|35\d{3})\d{11})\b"
+        ccs = re.findall(cc_pattern, js_content + html_content)
+        if ccs:
+            self.add_vulnerability(
+                "Credit card numbers disclosed",
+                "Critical",
+                "Potential Credit Card Numbers found in content",
+                f"Matches found: {len(ccs)}",
+                "Ensure PCI compliance and never expose full credit card numbers.",
+            )
+
+    def _check_reflected_input(
+        self, url: str, response: requests.Response, html_content: str
+    ):
+        """Check for reflected input that could lead to XSS"""
+
+        parsed_url = urlparse(url)
+        query_params = parsed_url.query
+
+        if not query_params:
+            return
+
+        param_values = []
+        for param in query_params.split("&"):
+            if "=" in param:
+                value = param.split("=", 1)[1]
+                if len(value) > 3:
+                    param_values.append(value)
+
+        for value in param_values:
+            from urllib.parse import unquote
+
+            decoded_value = unquote(value)
+
+            if decoded_value in html_content:
+                self.add_vulnerability(
+                    "Input returned in response (reflected)",
+                    "High",
+                    "User input from URL parameter is reflected in the response without proper encoding",
+                    f"Parameter value reflected: {decoded_value[:30]}...",
+                    "Properly encode/escape all user input before including in HTML output.",
+                )
+                break
+
+    def _check_cacheable_https(self, response: requests.Response, url: str):
+        """Check for cacheable HTTPS responses with sensitive data"""
+
+        if not url.startswith("https://"):
+            return
+
+        cache_control = response.headers.get("Cache-Control", "").lower()
+
+        is_cacheable = not any(
+            directive in cache_control for directive in ["no-cache", "no-store", "private"]
+        )
+
+        if is_cacheable:
+            content_type = response.headers.get("Content-Type", "").lower()
+            if any(ct in content_type for ct in ["html", "json"]):
+                self.add_vulnerability(
+                    "Cacheable HTTPS response",
+                    "Low",
+                    "Response may be cached by proxies and browsers, potentially exposing sensitive data",
+                    f"URL: {url[:100]}...",
+                    "Add 'Cache-Control: no-cache, no-store, must-revalidate' for sensitive responses.",
+                )
+
+    def _check_open_redirection(self, js_content: str):
+        """Check for potential DOM-based open redirection"""
+        redirection_patterns = [
+            r"window\.location\.(?:href|assign|replace)\s*=\s*[^;]+location\.search",
+            r"window\.open\([^)]+location\.search",
+            r"document\.location\.(?:href|assign|replace)\s*=\s*[^;]+location\.search",
+        ]
+
+        for pattern in redirection_patterns:
+            if re.search(pattern, js_content, re.IGNORECASE):
+                self.add_vulnerability(
+                    "Open redirection (DOM-based)",
+                    "Medium",
+                    "Potential DOM-based open redirection found in JavaScript",
+                    f"Pattern match: {pattern}",
+                    "Sanitize and validate all user-controlled input before using it in redirection functions.",
+                )
+                break
+
+    def _check_hsts(self, response: requests.Response):
+        """Check for Strict-Transport-Security header"""
+        hsts = response.headers.get("Strict-Transport-Security", "")
+        if not hsts:
+            self.add_vulnerability(
+                "Strict transport security not enforced",
+                "Low",
+                "The application does not enforce HSTS",
+                "Missing Strict-Transport-Security header",
+                "Implement HSTS header with a sufficient max-age value.",
+            )
+
+    def _check_content_type_options(self, response: requests.Response):
+        """Check for X-Content-Type-Options header"""
+        cto = response.headers.get("X-Content-Type-Options", "")
+        if cto.lower() != "nosniff":
+            self.add_vulnerability(
+                "Content type is not specified or nosniff missing",
+                "Low",
+                "X-Content-Type-Options header is missing or not set to nosniff",
+                f"Current value: {cto or 'Missing'}",
+                "Set X-Content-Type-Options: nosniff to prevent MIME sniffing.",
+            )
+
+    def _check_vulnerable_dependencies(self, js_content: str):
+        """Check for known vulnerable JavaScript dependencies"""
+        # Simple version-based check for common libraries
+        vulnerable_libs = [
+            (r"jQuery\s+v?(1\.[0-9]\.[0-9]|2\.[0-1]\.[0-9])", "jQuery", "CVE-2015-9251"),
+            (r"Handlebars\s+v?([0-3]\.[0-9]\.[0-9])", "Handlebars", "Multiple vulnerabilities"),
+        ]
+
+        for pattern, name, vuln in vulnerable_libs:
+            match = re.search(pattern, js_content, re.IGNORECASE)
+            if match:
+                self.add_vulnerability(
+                    "Vulnerable JavaScript dependency",
+                    "Medium",
+                    f"Known vulnerable version of {name} detected: {match.group(0)}",
+                    f"Vulnerability: {vuln}",
+                    f"Update {name} to the latest secure version.",
+                )
+
+    def _check_ajax_header_manipulation(self, js_content: str):
+        """Check for DOM-based Ajax request header manipulation"""
+        patterns = [
+            r"\.setRequestHeader\s*\([^,]+,\s*[^)]*location\.search",
+            r"\.setRequestHeader\s*\([^,]+,\s*[^)]*window\.location",
+        ]
+
+        for pattern in patterns:
+            if re.search(pattern, js_content, re.IGNORECASE):
+                self.add_vulnerability(
+                    "Ajax request header manipulation (DOM-based)",
+                    "Medium",
+                    "Potential Ajax request header manipulation found in JavaScript",
+                    f"Pattern match: {pattern}",
+                    "Ensure that headers are not set directly from user-controlled input.",
+                )
+                break
+
+    def _check_linkfinder(self, js_content: str):
+        """Extract potential endpoints from JavaScript (Linkfinder-style)"""
+        # Simple regex to find path-like strings in JS
+        pattern = r"['\"](/[a-zA-Z0-9\-_/]+)['\"]"
+        paths = re.findall(pattern, js_content)
+        if paths:
+            unique_paths = list(set(paths))[:10]
+            self.add_vulnerability(
+                "Linkfinder Analysed JS files",
+                "Information",
+                f"Potential endpoints discovered in JavaScript code ({len(set(paths))} total)",
+                f"Discovered paths: {', '.join(unique_paths)}",
+                "Review discovered endpoints for unauthorized access or information disclosure.",
+            )
+
+    def _check_robots_txt(self, url: str):
+        """Check for robots.txt file and its contents"""
+        try:
+            parsed_url = urlparse(url)
+            robots_url = f"{parsed_url.scheme}://{parsed_url.netloc}/robots.txt"
+            resp = self.session.get(robots_url, timeout=5)
+            if resp.status_code == 200:
+                self.add_vulnerability(
+                    "Robots.txt file",
+                    "Information",
+                    "Robots.txt file found",
+                    resp.text[:200],
+                    "Review robots.txt to ensure no sensitive paths are exposed to crawlers.",
+                )
+        except Exception:
+            pass
 
 
 class BubbleAnalyzer(BaseAnalyzer):
@@ -70,6 +509,7 @@ class BubbleAnalyzer(BaseAnalyzer):
 
         # Extract JavaScript content for analysis
         js_content = self._extract_javascript(soup)
+        html_content = str(soup)
 
         # Analyze API endpoints
         self._analyze_api_endpoints(js_content)
@@ -91,6 +531,23 @@ class BubbleAnalyzer(BaseAnalyzer):
 
         # Analyze form security
         self._analyze_forms(soup)
+
+        # Perform generic security checks (newly added)
+        self._check_session_tokens_in_url(url)
+        self._check_secrets_in_javascript(js_content, url)
+        self._check_cookie_security(response)
+        self._check_csp_policy(response)
+        self._check_clickjacking(response)
+        self._check_information_disclosure(js_content, html_content, response)
+        self._check_reflected_input(url, response, html_content)
+        self._check_cacheable_https(response, url)
+        self._check_open_redirection(js_content)
+        self._check_ajax_header_manipulation(js_content)
+        self._check_linkfinder(js_content)
+        self._check_hsts(response)
+        self._check_content_type_options(response)
+        self._check_vulnerable_dependencies(js_content)
+        self._check_robots_txt(url)
 
         return {
             "api_endpoints": self.api_endpoints,
@@ -351,7 +808,7 @@ class OutSystemsAnalyzer(BaseAnalyzer):
         self._analyze_roles(js_content)
 
         # Check for session tokens in URL
-        self._check_session_tokens_in_url(url, response)
+        self._check_session_tokens_in_url(url)
 
         # Check for secrets in JavaScript
         self._check_secrets_in_javascript(js_content, url)
@@ -526,346 +983,6 @@ class OutSystemsAnalyzer(BaseAnalyzer):
                 "No RBAC patterns found",
                 "Implement proper role-based access control for sensitive operations",
             )
-
-    def _check_session_tokens_in_url(self, url: str, response: requests.Response):
-        """Check for session tokens in URL parameters"""
-        parsed_url = urlparse(url)
-        query_params = parsed_url.query
-
-        # Patterns that indicate session tokens
-        session_patterns = [
-            r'session[_-]?(?:id|code|state|token)',
-            r'(?:access|auth)[_-]?token',
-            r'(?:state|code|nonce)=[\w\-\.]+',
-            r'(?:client|tab)[_-]id',
-        ]
-
-        for pattern in session_patterns:
-            if re.search(pattern, query_params, re.IGNORECASE):
-                self.add_vulnerability(
-                    "Session Token in URL",
-                    "Medium",
-                    "Session token or authentication parameter found in URL query string",
-                    f"URL contains session-like parameter: {url[:100]}...",
-                    "Transmit session tokens in HTTP cookies or POST body, not in URLs. "
-                    "URLs may be logged, bookmarked, or leaked via Referer headers.",
-                )
-                break
-
-    def _check_secrets_in_javascript(self, js_content: str, url: str):
-        """Check for hardcoded secrets and credentials in JavaScript"""
-        
-        # Comprehensive secret patterns matching Burp's JS Miner
-        secret_patterns = [
-            (r'(?:api[_-]?key|apikey)[\'":\s]*[\'"]([a-zA-Z0-9\-_]{20,})[\'"]', "API Key"),
-            (r'(?:secret|password|passwd|pwd)[\'":\s]*[\'"]([^\'"]{8,})[\'"]', "Secret/Password"),
-            (r'(?:token|auth|bearer)[\'":\s]*[\'"]([a-zA-Z0-9\-_\.]{20,})[\'"]', "Token"),
-            (r'(?:private[_-]?key|privatekey)[\'":\s]*[\'"]([^\'"]{20,})[\'"]', "Private Key"),
-            (r'(?:client[_-]?secret|clientsecret)[\'":\s]*[\'"]([a-zA-Z0-9\-_]{20,})[\'"]', "Client Secret"),
-            (r'(?:access[_-]?key|accesskey)[\'":\s]*[\'"]([a-zA-Z0-9\-_]{16,})[\'"]', "Access Key"),
-            (r'(?:aws|amazon)[_-]?(?:secret|key)[\'":\s]*[\'"]([a-zA-Z0-9+/]{20,})[\'"]', "AWS Secret"),
-            (r'(?:database|db)[_-]?(?:password|pass)[\'":\s]*[\'"]([^\'"]{8,})[\'"]', "Database Password"),
-        ]
-
-        for pattern, secret_type in secret_patterns:
-            matches = re.findall(pattern, js_content, re.IGNORECASE)
-            for match in matches:
-                # Skip common false positives
-                if match.lower() in ['password', 'secret', 'token', 'key', 'xxxx', '****', 'placeholder']:
-                    continue
-                if len(match) > 10:
-                    self.add_vulnerability(
-                        f"[JS Miner] {secret_type} in JavaScript",
-                        "Critical",
-                        f"Hardcoded {secret_type.lower()} found in JavaScript code",
-                        f"{secret_type}: {match[:15]}... (found in {url})",
-                        f"Remove hardcoded {secret_type.lower()} from client-side code. "
-                        "Use environment variables or secure backend configuration.",
-                    )
-
-    def _check_cookie_security(self, response: requests.Response):
-        """Check for cookie security issues"""
-        
-        cookies = response.cookies
-        set_cookie_headers = response.headers.get_list('Set-Cookie') if hasattr(response.headers, 'get_list') else []
-        
-        # Also check Set-Cookie headers directly
-        raw_cookies = []
-        for header_name, header_value in response.headers.items():
-            if header_name.lower() == 'set-cookie':
-                raw_cookies.append(header_value)
-
-        for cookie_str in raw_cookies:
-            cookie_name = cookie_str.split('=')[0] if '=' in cookie_str else 'unknown'
-            
-            # Check for HttpOnly flag
-            if 'httponly' not in cookie_str.lower():
-                self.add_vulnerability(
-                    "Cookie without HttpOnly flag set",
-                    "Low",
-                    f"Cookie '{cookie_name}' does not have HttpOnly flag set, making it accessible via JavaScript",
-                    f"Cookie: {cookie_name}",
-                    "Set HttpOnly flag on all cookies that don't need to be accessed by JavaScript. "
-                    "This prevents XSS attacks from stealing session cookies.",
-                )
-            
-            # Check for Secure flag on HTTPS
-            if 'secure' not in cookie_str.lower():
-                self.add_vulnerability(
-                    "Cookie without Secure flag set",
-                    "Medium",
-                    f"Cookie '{cookie_name}' does not have Secure flag set, allowing transmission over HTTP",
-                    f"Cookie: {cookie_name}",
-                    "Set Secure flag on all cookies to ensure they are only transmitted over HTTPS.",
-                )
-            
-            # Check for SameSite attribute
-            if 'samesite' not in cookie_str.lower():
-                self.add_vulnerability(
-                    "Cookie without SameSite attribute",
-                    "Low",
-                    f"Cookie '{cookie_name}' does not have SameSite attribute, making it vulnerable to CSRF",
-                    f"Cookie: {cookie_name}",
-                    "Set SameSite attribute (Strict or Lax) to prevent CSRF attacks.",
-                )
-
-    def _check_csp_policy(self, response: requests.Response):
-        """Check Content Security Policy for security issues"""
-        
-        csp_header = response.headers.get('Content-Security-Policy', '')
-        
-        if not csp_header:
-            self.add_vulnerability(
-                "Missing Content Security Policy",
-                "Medium",
-                "No Content-Security-Policy header found",
-                "CSP header not present",
-                "Implement a Content Security Policy to prevent XSS and other injection attacks.",
-            )
-            return
-
-        # Check for unsafe-inline in script-src
-        if "'unsafe-inline'" in csp_header and 'script-src' in csp_header:
-            self.add_vulnerability(
-                "Content Security Policy: allows untrusted script execution",
-                "High",
-                "CSP allows 'unsafe-inline' scripts, which permits inline JavaScript execution",
-                f"CSP: {csp_header[:100]}...",
-                "Remove 'unsafe-inline' from script-src directive. Use nonces or hashes for inline scripts.",
-            )
-
-        # Check for unsafe-inline in style-src
-        if "'unsafe-inline'" in csp_header and 'style-src' in csp_header:
-            self.add_vulnerability(
-                "Content Security Policy: allows untrusted style execution",
-                "Medium",
-                "CSP allows 'unsafe-inline' styles, which permits inline CSS",
-                f"CSP: {csp_header[:100]}...",
-                "Remove 'unsafe-inline' from style-src directive. Use nonces or hashes for inline styles.",
-            )
-
-        # Check for unsafe-eval
-        if "'unsafe-eval'" in csp_header:
-            self.add_vulnerability(
-                "Content Security Policy: allows unsafe-eval",
-                "High",
-                "CSP allows 'unsafe-eval', which permits dynamic code evaluation",
-                f"CSP: {csp_header[:100]}...",
-                "Remove 'unsafe-eval' from CSP. Refactor code to avoid eval() and related functions.",
-            )
-
-        # Check for missing or permissive form-action
-        if 'form-action' not in csp_header:
-            self.add_vulnerability(
-                "Content Security Policy: allows form hijacking",
-                "Medium",
-                "CSP does not restrict form submission targets via form-action directive",
-                "No form-action directive found",
-                "Add 'form-action' directive to CSP to restrict where forms can be submitted.",
-            )
-
-    def _check_clickjacking(self, response: requests.Response):
-        """Check for clickjacking protection"""
-        
-        x_frame_options = response.headers.get('X-Frame-Options', '')
-        csp_header = response.headers.get('Content-Security-Policy', '')
-        
-        # Check for frame-ancestors in CSP
-        has_frame_ancestors = 'frame-ancestors' in csp_header
-        
-        if not x_frame_options and not has_frame_ancestors:
-            self.add_vulnerability(
-                "Frameable response (potential Clickjacking)",
-                "Medium",
-                "Response can be framed - no X-Frame-Options or CSP frame-ancestors directive",
-                "Missing both X-Frame-Options header and CSP frame-ancestors",
-                "Add X-Frame-Options: DENY or SAMEORIGIN header, "
-                "or add 'frame-ancestors' directive to Content-Security-Policy.",
-            )
-        elif x_frame_options and x_frame_options.upper() not in ['DENY', 'SAMEORIGIN']:
-            self.add_vulnerability(
-                "Weak Clickjacking Protection",
-                "Low",
-                f"X-Frame-Options set to weak value: {x_frame_options}",
-                f"X-Frame-Options: {x_frame_options}",
-                "Set X-Frame-Options to DENY or SAMEORIGIN.",
-            )
-
-    def _check_information_disclosure(self, js_content: str, html_content: str, response: requests.Response):
-        """Check for information disclosure vulnerabilities"""
-        
-        # Check for email addresses
-        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
-        emails = re.findall(email_pattern, js_content + html_content)
-        if emails:
-            unique_emails = list(set(emails))[:5]  # Limit to first 5 unique
-            self.add_vulnerability(
-                "Email addresses disclosed",
-                "Information",
-                f"Email addresses found in page content ({len(unique_emails)} unique)",
-                f"Examples: {', '.join(unique_emails)}",
-                "Consider obscuring or removing email addresses, or use contact forms instead.",
-            )
-
-        # Check for private IP addresses
-        private_ip_pattern = r'\b(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})\b'
-        private_ips = re.findall(private_ip_pattern, js_content + html_content)
-        if private_ips:
-            unique_ips = list(set(private_ips))[:5]
-            self.add_vulnerability(
-                "Private IP addresses disclosed",
-                "Low",
-                f"Private IP addresses found in page content ({len(unique_ips)} unique)",
-                f"Examples: {', '.join(unique_ips)}",
-                "Remove private IP addresses from client-side code and responses.",
-            )
-
-        # Check for detailed error messages
-        error_patterns = [
-            r'(?:error|exception):\s*[^\n]{20,100}',
-            r'stack\s*trace:',
-            r'at\s+[\w\.]+\([^\)]+\.(?:py|js|java|cs):\d+\)',
-            r'(?:Internal\s+Server\s+Error|500|404|403).*(?:Exception|Error)',
-        ]
-        
-        for pattern in error_patterns:
-            if re.search(pattern, html_content, re.IGNORECASE):
-                self.add_vulnerability(
-                    "Detailed Error Messages Revealed",
-                    "Low",
-                    "Detailed error messages or stack traces exposed in response",
-                    "Error details found in response",
-                    "Configure application to show generic error messages to users. "
-                    "Log detailed errors server-side only.",
-                )
-                break
-
-    def _check_reflected_input(self, url: str, response: requests.Response, html_content: str):
-        """Check for reflected input that could lead to XSS"""
-        
-        parsed_url = urlparse(url)
-        query_params = parsed_url.query
-        
-        if not query_params:
-            return
-
-        # Extract parameter values
-        param_values = []
-        for param in query_params.split('&'):
-            if '=' in param:
-                value = param.split('=', 1)[1]
-                if len(value) > 3:  # Skip very short values
-                    param_values.append(value)
-
-        # Check if any parameter values are reflected in the response
-        for value in param_values:
-            # URL decode the value for comparison
-            from urllib.parse import unquote
-            decoded_value = unquote(value)
-            
-            if decoded_value in html_content:
-                self.add_vulnerability(
-                    "Input returned in response (reflected)",
-                    "High",
-                    "User input from URL parameter is reflected in the response without proper encoding",
-                    f"Parameter value '{decoded_value[:30]}...' reflected in response",
-                    "Properly encode/escape all user input before including in HTML output. "
-                    "Use context-appropriate encoding (HTML, JavaScript, URL, etc.).",
-                )
-                break
-
-    def _check_path_relative_stylesheets(self, soup: BeautifulSoup):
-        """Check for path-relative stylesheet imports (potential security issue)"""
-        
-        stylesheets = soup.find_all('link', rel='stylesheet')
-        for stylesheet in stylesheets:
-            href = stylesheet.get('href', '')
-            
-            # Check if it's a path-relative URL (starts with a path, not / or http)
-            if href and not href.startswith(('http://', 'https://', '//', '/')):
-                self.add_vulnerability(
-                    "Path-relative style sheet import",
-                    "Low",
-                    "Path-relative stylesheet import can be exploited for content hijacking",
-                    f"Stylesheet: {href}",
-                    "Use absolute URLs or root-relative URLs (starting with /) for stylesheet imports.",
-                )
-
-    def _check_cacheable_https(self, response: requests.Response, url: str):
-        """Check for cacheable HTTPS responses with sensitive data"""
-        
-        if not url.startswith('https://'):
-            return
-
-        cache_control = response.headers.get('Cache-Control', '').lower()
-        pragma = response.headers.get('Pragma', '').lower()
-        
-        # Check if response is cacheable
-        is_cacheable = not any(directive in cache_control for directive in ['no-cache', 'no-store', 'private'])
-        is_cacheable = is_cacheable and 'no-cache' not in pragma
-        
-        if is_cacheable:
-            # Check if response might contain sensitive data
-            content_type = response.headers.get('Content-Type', '').lower()
-            
-            # HTML and JSON responses might contain sensitive data
-            if any(ct in content_type for ct in ['html', 'json']):
-                self.add_vulnerability(
-                    "Cacheable HTTPS response",
-                    "Low",
-                    "Response may be cached by proxies and browsers, potentially exposing sensitive data",
-                    f"URL: {url[:100]}...",
-                    "Add 'Cache-Control: no-cache, no-store, must-revalidate' for responses containing sensitive data.",
-                )
-
-    def _check_base64_data(self, url: str, html_content: str):
-        """Check for Base64 encoded data in parameters or content"""
-        
-        parsed_url = urlparse(url)
-        query_params = parsed_url.query
-        
-        # Check URL parameters for Base64 data
-        base64_pattern = r'[A-Za-z0-9+/]{20,}={0,2}'
-        
-        if query_params:
-            matches = re.findall(base64_pattern, query_params)
-            for match in matches:
-                try:
-                    # Try to decode to verify it's valid Base64
-                    decoded = base64.b64decode(match).decode('utf-8', errors='ignore')
-                    if decoded:
-                        self.add_vulnerability(
-                            "Base64-encoded data in parameter",
-                            "Information",
-                            "Base64-encoded data found in URL parameter",
-                            f"Encoded data: {match[:30]}... decodes to: {decoded[:50]}...",
-                            "Review if sensitive data is being transmitted in Base64-encoded parameters. "
-                            "Base64 is encoding, not encryption, and can be easily decoded.",
-                        )
-                        break
-                except Exception:
-                    pass
-
 
 class AirtableAnalyzer(BaseAnalyzer):
     """Specialized analyzer for Airtable applications"""

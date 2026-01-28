@@ -139,9 +139,17 @@ class SecurityScannerCLI:
             return
 
         # Vulnerability summary
-        severity_counts = {"Critical": 0, "High": 0, "Medium": 0, "Low": 0}
+        severity_counts = {
+            "Critical": 0,
+            "High": 0,
+            "Medium": 0,
+            "Low": 0,
+            "Information": 0,
+        }
         for vuln in vulnerabilities:
             severity = vuln.get("severity", "Low")
+            if severity not in severity_counts:
+                severity_counts[severity] = 0
             severity_counts[severity] += 1
 
         total_vulns = sum(severity_counts.values())
@@ -151,13 +159,15 @@ class SecurityScannerCLI:
         else:
             self.print_status(f"Found {total_vulns} vulnerabilities:", "warning")
 
-            for severity, count in severity_counts.items():
+            for severity in ["Critical", "High", "Medium", "Low", "Information"]:
+                count = severity_counts.get(severity, 0)
                 if count > 0:
                     color = {
                         "Critical": Fore.MAGENTA,
                         "High": Fore.RED,
                         "Medium": Fore.YELLOW,
                         "Low": Fore.BLUE,
+                        "Information": Fore.CYAN,
                     }.get(severity, Fore.WHITE)
 
                     print(f"  {color}{severity}: {count}{Style.RESET_ALL}")
@@ -354,6 +364,15 @@ class SecurityScannerCLI:
 
     def enhance_scan_results(self, basic_results):
         """Enhance basic scan results with professional structure"""
+        platform = basic_results.get("platform_type", "unknown")
+        specific_findings = {}
+        if platform == "bubble":
+            specific_findings = basic_results.get("bubble_specific", {})
+        elif platform == "outsystems":
+            specific_findings = basic_results.get("outsystems_specific", {})
+        elif platform == "airtable":
+            specific_findings = basic_results.get("airtable_specific", {})
+
         return {
             "scan_metadata": {
                 "url": basic_results.get("url", ""),
@@ -361,12 +380,13 @@ class SecurityScannerCLI:
                 "scanner_version": "2.0-Professional",
                 "scan_type": "Comprehensive Security Assessment",
                 "status_code": basic_results.get("status_code", 0),
-                "response_time": basic_results.get("response_time", 0)
+                "response_time": basic_results.get("response_time", 0),
             },
             "platform_analysis": {
-                "platform_type": basic_results.get("platform_type", "unknown"),
-                "technology_stack": [],
-                "confidence_score": 0.9
+                "platform_type": platform,
+                "technology_stack": [platform.title()],
+                "confidence_score": 0.9,
+                "specific_findings": specific_findings,
             },
             "security_assessment": {
                 "overall_score": self.calculate_score(basic_results),
@@ -374,9 +394,9 @@ class SecurityScannerCLI:
                 "compliance_status": {"OWASP": "Partial", "NIST": "Partial"},
                 "vulnerabilities": basic_results.get("vulnerabilities", []),
                 "security_headers": basic_results.get("security_headers", {}),
-                "ssl_tls_analysis": basic_results.get("ssl_analysis", {})
+                "ssl_tls_analysis": basic_results.get("ssl_analysis", {}),
             },
-            "executive_summary": self.generate_summary(basic_results)
+            "executive_summary": self.generate_summary(basic_results),
         }
 
     def calculate_score(self, results):
@@ -414,7 +434,11 @@ class SecurityScannerCLI:
         """Generate enhanced professional HTML report"""
         self.print_status("📊 Enhancing results...", "info")
         enhanced_results = self.enhance_scan_results(results)
-        
+
+        # Ensure directory exists
+        output_path = Path(output_file)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
         self.print_status("📄 Generating professional HTML report...", "info")
         html_path = self.report_generator.generate_report(enhanced_results, output_file)
         

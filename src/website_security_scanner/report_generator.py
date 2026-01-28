@@ -30,11 +30,44 @@ class ProfessionalReportGenerator:
         {self._generate_burp_header(results)}
         {self._generate_burp_summary(results)}
         {self._generate_burp_contents(results)}
+        {self._generate_platform_specific_findings(results)}
         {self._generate_burp_findings(results)}
         {self._generate_footer()}
     </div>
 </body>
 </html>"""
+
+    def _generate_platform_specific_findings(self, results):
+        platform_type = results["platform_analysis"]["platform_type"]
+        if platform_type == "unknown":
+            return ""
+
+        findings = ['<div class="rule"></div>']
+        findings.append(f"<h1>{platform_type.title()} Platform Analysis Findings</h1>")
+        findings.append('<div class="finding-section">')
+
+        # We need to reach into the basic results if they were preserved,
+        # or we might need to update how enhance_scan_results works.
+        # For now, let's assume some key findings are passed in platform_analysis.
+
+        specific_data = results.get("platform_analysis", {}).get("specific_findings", {})
+        if not specific_data:
+            findings.append("<p>No platform-specific technical details discovered.</p>")
+            findings.append("</div>")
+            return "\n".join(findings)
+
+        for key, value in specific_data.items():
+            if isinstance(value, list) and value:
+                findings.append(f"<h3>{key.replace('_', ' ').title()}</h3>")
+                findings.append("<ul>")
+                for item in value[:20]:  # Limit to first 20
+                    findings.append(f"<li><code>{item}</code></li>")
+                if len(value) > 20:
+                    findings.append(f"<li>... and {len(value) - 20} more</li>")
+                findings.append("</ul>")
+
+        findings.append("</div>")
+        return "\n".join(findings)
     
     def _get_burp_styles(self):
         return """<style>
