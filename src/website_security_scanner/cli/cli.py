@@ -28,6 +28,10 @@ import requests
 import yaml
 from colorama import Back, Fore, Style, init
 
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from result_transformer import transform_results_for_professional_report
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 # Initialize colorama for cross-platform colored output
@@ -184,6 +188,21 @@ class SecurityScannerCLI:
             self.print_status("SSL/TLS configuration found", "success")
         elif ssl_info and "error" in ssl_info:
             self.print_status(f"SSL/TLS issues: {ssl_info['error']}", "warning")
+
+        # Verification Summary
+        verification_summary = result.get("verification_summary", {})
+        if verification_summary:
+            total_vulns = verification_summary.get("total_vulnerabilities", 0)
+            verified_vulns = verification_summary.get("verified_vulnerabilities", 0)
+            verification_rate = verification_summary.get("verification_rate", 0)
+
+            if total_vulns > 0:
+                print(f"\n{Fore.CYAN}Vulnerability Verification:{Style.RESET_ALL}")
+                print(f"  Total: {total_vulns}")
+                print(f"  Verified: {Fore.GREEN}{verified_vulns}{Style.RESET_ALL}")
+                print(f"  Verification Rate: {verification_rate}%")
+            else:
+                print(f"\n{Fore.CYAN}Vulnerability Verification:{Style.RESET_ALL} No vulnerabilities to verify")
 
         print()
 
@@ -444,7 +463,9 @@ class SecurityScannerCLI:
     def generate_enhanced_report(self, results, output_file):
         """Generate enhanced professional HTML report"""
         self.print_status("📊 Enhancing results...", "info")
-        enhanced_results = self.enhance_scan_results(results)
+        
+        # Transform results using the professional transformer
+        enhanced_results = transform_results_for_professional_report(results)
 
         # Ensure directory exists
         output_path = Path(output_file)

@@ -190,6 +190,9 @@ class LowCodeSecurityScanner:
         analyzer = BubbleAnalyzer(self.session)
         results = analyzer.analyze(url, response, soup)
 
+        # Perform active verification of found vulnerabilities
+        verification_summary = analyzer.verify_vulnerabilities(url)
+
         # Map BubbleAnalyzer findings to the format expected by scanner
         return {
             "bubble_specific": {
@@ -199,6 +202,7 @@ class LowCodeSecurityScanner:
                 "privacy_rules": results.get("privacy_rules", []),
             },
             "vulnerabilities": results.get("vulnerabilities", []),
+            "verification_summary": verification_summary,
         }
 
     def analyze_outsystems_app(self, url, response):
@@ -208,6 +212,9 @@ class LowCodeSecurityScanner:
         analyzer = OutSystemsAnalyzer(self.session)
         results = analyzer.analyze(url, response, soup)
 
+        # Perform active verification of found vulnerabilities
+        verification_summary = analyzer.verify_vulnerabilities(url)
+
         return {
             "outsystems_specific": {
                 "rest_apis_found": results.get("rest_apis", []),
@@ -215,6 +222,7 @@ class LowCodeSecurityScanner:
                 "entities": results.get("entities", []),
             },
             "vulnerabilities": results.get("vulnerabilities", []),
+            "verification_summary": verification_summary,
         }
 
     def analyze_airtable_app(self, url, response):
@@ -224,6 +232,9 @@ class LowCodeSecurityScanner:
         analyzer = AirtableAnalyzer(self.session)
         results = analyzer.analyze(url, response, soup)
 
+        # Perform active verification of found vulnerabilities
+        verification_summary = analyzer.verify_vulnerabilities(url)
+
         return {
             "airtable_specific": {
                 "base_id_exposure": results.get("base_ids", []),
@@ -231,6 +242,7 @@ class LowCodeSecurityScanner:
                 "table_structure_exposure": results.get("table_ids", []),
             },
             "vulnerabilities": results.get("vulnerabilities", []),
+            "verification_summary": verification_summary,
         }
 
     def analyze_generic_app(self, url, response):
@@ -240,9 +252,13 @@ class LowCodeSecurityScanner:
         analyzer = GenericWebAnalyzer(self.session)
         results = analyzer.analyze(url, response, soup)
 
+        # Perform active verification of found vulnerabilities
+        verification_summary = analyzer.verify_vulnerabilities(url)
+
         return {
             "generic_analysis": results.get("generic_findings", {}),
             "vulnerabilities": results.get("vulnerabilities", []),
+            "verification_summary": verification_summary,
         }
 
     def check_common_vulnerabilities(self, url, response):
@@ -444,46 +460,9 @@ class LowCodeSecurityScanner:
 
     def generate_html_report(self, results):
         """Generate HTML security report"""
-        html_template = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Low-Code Platform Security Report</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
-                .header { background-color: #f0f0f0; padding: 20px; border-radius: 5px; }
-                .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
-                .vulnerability { background-color: #ffe6e6; padding: 10px; margin: 10px 0; border-radius: 3px; }
-                .recommendation { background-color: #e6ffe6; padding: 10px; margin: 10px 0; border-radius: 3px; }
-                .high { border-left: 5px solid #ff0000; }
-                .medium { border-left: 5px solid #ffa500; }
-                .low { border-left: 5px solid #ffff00; }
-                .critical { border-left: 5px solid #8b0000; }
-                table { width: 100%; border-collapse: collapse; }
-                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                th { background-color: #f2f2f2; }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>Low-Code Platform Security Analysis Report</h1>
-                <p><strong>Target:</strong> {url}</p>
-                <p><strong>Platform:</strong> {platform}</p>
-                <p><strong>Scan Date:</strong> {timestamp}</p>
-            </div>
-        """.format(
-            url=results.get("url", "Unknown"),
-            platform=results.get("platform_type", "Unknown").title(),
-            timestamp=results.get("timestamp", "Unknown"),
-        )
-
-        # Add more HTML content based on results...
-        html_template += """
-        </body>
-        </html>
-        """
-
-        return html_template
+        structured_results = transform_results_for_professional_report(results)
+        report_generator = ProfessionalReportGenerator()
+        return report_generator.generate_html_content(structured_results)
 
     def generate_text_report(self, results):
         """Generate text-based security report"""
