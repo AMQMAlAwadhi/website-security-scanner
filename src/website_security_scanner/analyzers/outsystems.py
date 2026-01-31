@@ -4,7 +4,8 @@ OutSystems Security Analyzer
 Low-Code Platform Security Scanner
 
 Specialized analyzer for OutSystems applications with platform-specific
-vulnerability detection.
+vulnerability detection and comprehensive traditional web vulnerability
+scanning (XSS, SQLi, CSRF, Open Redirect, etc.).
 
 Author: Bachelor Thesis Project - Low-Code Platforms Security Analysis
 """
@@ -17,6 +18,12 @@ from bs4 import BeautifulSoup
 
 from .base import BaseAnalyzer
 from .advanced_checks import AdvancedChecksMixin
+from .vulnerability_detection import (
+    XSSDetector,
+    SQLInjectionDetector,
+    CSRFDetector,
+    OpenRedirectDetector,
+)
 from ..utils.evidence_builder import EvidenceBuilder
 
 
@@ -40,6 +47,12 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         self.rest_apis: List[str] = []
         self.screen_actions: List[Dict[str, Any]] = []
         self.entities: List[Dict[str, Any]] = []
+        
+        # Initialize vulnerability detectors
+        self.xss_detector = XSSDetector(session)
+        self.sqli_detector = SQLInjectionDetector(session)
+        self.csrf_detector = CSRFDetector(session)
+        self.redirect_detector = OpenRedirectDetector(session)
 
     def analyze(
         self, url: str, response: requests.Response, soup: BeautifulSoup
@@ -128,6 +141,202 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
 
         # Advanced header analysis (Burp: Secret input: header)
         self._check_secret_input_header_reflection(url)
+
+        # COMPREHENSIVE VULNERABILITY DETECTION (Traditional Web Vulnerabilities)
+        # Cross-Site Scripting (XSS) Detection
+        xss_vulns = self.xss_detector.detect_reflected_xss(url, response, html_content)
+        for vuln in xss_vulns:
+            evidence = f"Parameter: {vuln['parameter']}, Context: {vuln['context']}"
+            self.add_enriched_vulnerability(
+                vuln['type'],
+                vuln['severity'],
+                f"{vuln['type']} detected in parameter '{vuln['parameter']}'",
+                evidence,
+                "Implement output encoding, input validation, and Content Security Policy",
+                category="Cross-Site Scripting",
+                owasp="A03:2021 - Injection",
+                cwe=["CWE-79"],
+                background="Cross-Site Scripting (XSS) occurs when untrusted data is included in web pages without proper validation or escaping, allowing attackers to execute malicious scripts in victims' browsers.",
+                impact="XSS can lead to session hijacking, defacement, malware distribution, data theft, and credential harvesting. Attackers can impersonate users, perform actions on their behalf, and steal sensitive data.",
+                references=[
+                    "https://owasp.org/www-community/attacks/xss/",
+                    "https://cwe.mitre.org/data/definitions/79.html",
+                    "https://portswigger.net/web-security/cross-site-scripting"
+                ]
+            )
+
+        # DOM-based XSS Detection
+        dom_xss_vulns = self.xss_detector.detect_dom_xss(url, js_content)
+        for vuln in dom_xss_vulns:
+            evidence = f"Source: {vuln['source']}, Sink: {vuln['sink']}"
+            self.add_enriched_vulnerability(
+                vuln['type'],
+                vuln['severity'],
+                f"{vuln['type']} detected via DOM manipulation",
+                evidence,
+                "Avoid using dangerous DOM sinks with user-controlled data; use safe DOM APIs and validate input",
+                category="Cross-Site Scripting",
+                owasp="A03:2021 - Injection",
+                cwe=["CWE-79"],
+                background="DOM-based XSS vulnerabilities occur when the DOM is modified in an unsafe way using untrusted data from sources like location.hash or document.URL.",
+                impact="DOM-based XSS is particularly dangerous as it bypasses server-side protections. Attackers can execute arbitrary JavaScript in the victim's browser context.",
+                references=[
+                    "https://owasp.org/www-community/attacks/DOM_Based_XSS",
+                    "https://portswigger.net/web-security/cross-site-scripting/dom-based"
+                ]
+            )
+
+        # SQL Injection Detection
+        sqli_vulns = self.sqli_detector.detect_sql_injection(url, response)
+        for vuln in sqli_vulns:
+            if vuln['type'] == 'SQL Injection':
+                evidence = f"Parameter: {vuln.get('parameter', 'unknown')}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} vulnerability detected in parameter '{vuln.get('parameter', 'unknown')}'",
+                    evidence,
+                    "Use parameterized queries, prepared statements, and input validation. Never concatenate user input into SQL queries.",
+                    category="Injection",
+                    owasp="A03:2021 - Injection",
+                    cwe=["CWE-89"],
+                    background="SQL Injection occurs when untrusted user input is included in SQL queries without proper sanitization, allowing attackers to manipulate database queries.",
+                    impact="SQL injection can lead to data breach, data loss, authentication bypass, privilege escalation, and in severe cases, complete server compromise.",
+                    references=[
+                        "https://owasp.org/www-community/attacks/SQL_Injection",
+                        "https://cwe.mitre.org/data/definitions/89.html",
+                        "https://portswigger.net/web-security/sql-injection"
+                    ]
+                )
+            elif vuln['type'] == 'SQL Error Disclosure':
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    "Database error messages are being disclosed to users",
+                    "SQL error patterns found in response",
+                    "Configure database error handling to display generic messages to users. Log detailed errors server-side.",
+                    category="Information Disclosure",
+                    owasp="A05:2021 - Security Misconfiguration",
+                    cwe=["CWE-209"],
+                    background="SQL error messages can reveal database structure, table names, column names, and implementation details to attackers.",
+                    impact="SQL error disclosure assists attackers in crafting more precise SQL injection attacks and understanding the database schema.",
+                    references=[
+                        "https://cwe.mitre.org/data/definitions/209.html",
+                        "https://owasp.org/www-project-web-security-testing-guide/"
+                    ]
+                )
+
+        # CSRF Detection
+        csrf_vulns = self.csrf_detector.detect_csrf(url, response, soup)
+        for vuln in csrf_vulns:
+            if vuln['type'] == 'Cross-Site Request Forgery (CSRF)':
+                evidence = f"Form: {vuln['form_method']} {vuln['form_action']}, Missing: {vuln['missing_protection']}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} vulnerability in form {vuln['form_index']}",
+                    evidence,
+                    "Implement anti-CSRF tokens in all state-changing forms. Verify SameSite cookie attributes. Use CSRF protection headers.",
+                    category="Cross-Site Request Forgery",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-352"],
+                    background="CSRF attacks force authenticated users to execute unwanted actions on a web application without their consent.",
+                    impact="CSRF can lead to unauthorized transactions, password changes, email modifications, data deletion, and privilege escalation.",
+                    references=[
+                        "https://owasp.org/www-community/attacks/csrf",
+                        "https://cwe.mitre.org/data/definitions/352.html",
+                        "https://portswigger.net/web-security/csrf"
+                    ]
+                )
+            elif vuln['type'] == 'Weak CSRF Protection':
+                evidence = f"Form: {vuln['form_method']} {vuln['form_action']}, Issue: {vuln['issue']}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} in form {vuln['form_index']}",
+                    evidence,
+                    "Implement SameSite=Strict or SameSite=Lax cookies. Use double-submit cookie pattern or custom CSRF tokens.",
+                    category="Cross-Site Request Forgery",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-352"],
+                    background="Weak CSRF protection may not prevent all CSRF attack vectors, especially in cross-origin scenarios.",
+                    impact="Weak CSRF protection can still allow attackers to perform unauthorized actions on behalf of authenticated users.",
+                    references=[
+                        "https://owasp.org/www-community/attacks/csrf",
+                        "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite"
+                    ]
+                )
+            elif vuln['type'] == 'API CSRF Vulnerability':
+                evidence = f"Method: {vuln['method']}, Issue: {vuln['issue']}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} in API endpoint",
+                    evidence,
+                    "Implement CSRF tokens, verify Origin/Referer headers, or use custom headers like X-Requested-With for state-changing API calls.",
+                    category="Cross-Site Request Forgery",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-352"],
+                    background="API endpoints may be vulnerable to CSRF if they don't implement proper CSRF protection mechanisms.",
+                    impact="API CSRF vulnerabilities can lead to unauthorized API calls, data modification, and privilege escalation.",
+                    references=[
+                        "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html"
+                    ]
+                )
+
+        # Open Redirect Detection
+        redirect_vulns = self.redirect_detector.detect_open_redirect(url, response, soup)
+        for vuln in redirect_vulns:
+            if vuln['type'] == 'Open Redirect':
+                evidence = f"Parameter: {vuln['parameter']}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} vulnerability detected in parameter '{vuln['parameter']}'",
+                    evidence,
+                    "Validate and whitelist redirect URLs. Use relative URLs where possible. Avoid using user input for redirect destinations.",
+                    category="URL Redirection",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-601"],
+                    background="Open redirect vulnerabilities occur when an application accepts user-controllable input that specifies a redirect URL without proper validation.",
+                    impact="Attackers can redirect users to phishing sites, malware distribution, or malicious content, bypassing URL filtering and trust indicators.",
+                    references=[
+                        "https://cwe.mitre.org/data/definitions/601.html",
+                        "https://owasp.org/www-project-web-security-testing-guide/"
+                    ]
+                )
+            elif vuln['type'] == 'Open Redirect via Meta Refresh':
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    "Open redirect via meta refresh tag detected",
+                    "Meta refresh with user-controlled URL parameter",
+                    "Validate redirect URLs before using them in meta refresh tags. Use server-side redirects with proper validation.",
+                    category="URL Redirection",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-601"],
+                    background="Meta refresh tags can be abused for open redirect attacks if they incorporate user-controlled input.",
+                    impact="Similar to standard open redirects, this can be used for phishing and malware distribution.",
+                    references=[
+                        "https://cwe.mitre.org/data/definitions/601.html"
+                    ]
+                )
+            elif vuln['type'] == 'Potential Open Redirect via JavaScript':
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    "Potential open redirect via JavaScript detected",
+                    "JavaScript redirect code with user input",
+                    "Review JavaScript redirect code to ensure URLs are validated and sanitized before use.",
+                    category="URL Redirection",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-601"],
+                    background="JavaScript-based redirects can be exploited for phishing if they incorporate user-controlled input without validation.",
+                    impact="Attackers can craft malicious URLs that redirect victims to phishing sites or malicious content.",
+                    references=[
+                        "https://cwe.mitre.org/data/definitions/601.html"
+                    ]
+                )
 
         return {
             "rest_apis": self.rest_apis,
