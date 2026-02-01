@@ -214,6 +214,8 @@
 
     async function startScan() {
         const verifyVulns = document.getElementById('opt-verify').checked;
+        const deepScan = document.getElementById('opt-deep').checked;
+        const apiDiscovery = document.getElementById('opt-api').checked;
         
         if (currentScanType === 'single') {
             const url = document.getElementById('target-url').value.trim();
@@ -226,7 +228,12 @@
                 const response = await fetch('/api/scan/single', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url, verify_vulnerabilities: verifyVulns })
+                    body: JSON.stringify({ 
+                        url, 
+                        verify_vulnerabilities: verifyVulns,
+                        deep_scan: deepScan,
+                        api_discovery: apiDiscovery
+                    })
                 });
                 
                 const data = await response.json();
@@ -258,7 +265,12 @@
                 const response = await fetch('/api/scan/batch', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ urls, verify_vulnerabilities: verifyVulns })
+                    body: JSON.stringify({ 
+                        urls, 
+                        verify_vulnerabilities: verifyVulns,
+                        deep_scan: deepScan,
+                        api_discovery: apiDiscovery
+                    })
                 });
                 
                 const data = await response.json();
@@ -354,9 +366,9 @@
                             <p class="text-sm text-gray-600">Vulnerabilities</p>
                             <p class="text-xl font-bold text-red-600">${vulns.length}</p>
                         </div>
-                        <div class="bg-green-50 p-4 rounded">
+                        <div class="${getSecurityScoreClass(results.security_score || results.security_headers?.security_score)} p-4 rounded">
                             <p class="text-sm text-gray-600">Security Score</p>
-                            <p class="text-xl font-bold">${results.security_headers?.security_score || 'N/A'}</p>
+                            <p class="text-xl font-bold">${getSecurityScoreDisplay(results.security_score || results.security_headers?.security_score)}</p>
                         </div>
                     </div>
                     
@@ -411,6 +423,58 @@
     function resetForm() {
         document.getElementById('target-url').value = '';
         document.getElementById('batch-urls').value = '';
+    }
+    
+    function getSecurityScoreClass(score) {
+        if (!score || score === 'N/A') return 'bg-gray-50';
+        
+        // Handle score format like "0/8"
+        if (typeof score === 'string' && score.includes('/')) {
+            const [current, total] = score.split('/').map(Number);
+            const percentage = Math.round((current / total) * 100);
+            return percentage >= 75 ? 'bg-green-50' : 
+                   percentage >= 50 ? 'bg-yellow-50' : 
+                   'bg-red-50';
+        }
+        
+        return 'bg-gray-50';
+    }
+    
+    function getSecurityScoreDisplay(score) {
+        if (!score || score === 'N/A') return 'N/A';
+        
+        // Handle score format like "0/8" or percentage
+        if (typeof score === 'string' && score.includes('/')) {
+            const [current, total] = score.split('/').map(Number);
+            const percentage = Math.round((current / total) * 100);
+            const colorClass = percentage >= 75 ? 'text-green-600' : 
+                             percentage >= 50 ? 'text-yellow-600' : 
+                             'text-red-600';
+            return `<span class="${colorClass}">${percentage}% (${score})</span>`;
+        }
+        
+        return score;
+    }
+    
+    function getSeverityClass(severity) {
+        switch(severity?.toLowerCase()) {
+            case 'critical': return 'bg-red-100 text-red-800';
+            case 'high': return 'bg-red-100 text-red-800';
+            case 'medium': return 'bg-yellow-100 text-yellow-800';
+            case 'low': return 'bg-blue-100 text-blue-800';
+            case 'info': return 'bg-gray-100 text-gray-800';
+            default: return 'bg-gray-100 text-gray-800';
+        }
+    }
+    
+    function getStatusClass(status) {
+        switch(status?.toLowerCase()) {
+            case 'running': return 'bg-blue-100 text-blue-800';
+            case 'completed': return 'bg-green-100 text-green-800';
+            case 'failed': return 'bg-red-100 text-red-800';
+            case 'queued': return 'bg-yellow-100 text-yellow-800';
+            default: return 'bg-gray-100 text-gray-800';
+        }
     }
 
     // WebSocket handlers

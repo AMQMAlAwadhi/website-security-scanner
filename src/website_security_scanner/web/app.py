@@ -11,13 +11,17 @@ This provides a modern, real-time web interface for security scanning with:
 import os
 import json
 import threading
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List
+from urllib.parse import urljoin, urlparse
 
 from flask import Flask, render_template, request, jsonify, send_file, session
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
+import requests
+from bs4 import BeautifulSoup
 
 # Import scanner components
 import sys
@@ -120,6 +124,8 @@ def register_routes(app):
         data = request.get_json()
         url = data.get('url')
         verify_vulns = data.get('verify_vulnerabilities', False)
+        deep_scan = data.get('deep_scan', False)
+        api_discovery = data.get('api_discovery', False)
         
         if not url:
             return jsonify({'error': 'URL is required'}), 400
@@ -130,6 +136,8 @@ def register_routes(app):
             'id': scan_id,
             'url': url,
             'verify': verify_vulns,
+            'deep_scan': deep_scan,
+            'api_discovery': api_discovery,
             'status': 'queued',
             'created_at': datetime.now().isoformat(),
             'progress': 0
@@ -154,6 +162,8 @@ def register_routes(app):
         data = request.get_json()
         urls = data.get('urls', [])
         verify_vulns = data.get('verify_vulnerabilities', False)
+        deep_scan = data.get('deep_scan', False)
+        api_discovery = data.get('api_discovery', False)
         
         if not urls:
             return jsonify({'error': 'URLs list is required'}), 400
@@ -168,6 +178,8 @@ def register_routes(app):
                 'batch_id': batch_id,
                 'url': url,
                 'verify': verify_vulns,
+                'deep_scan': deep_scan,
+                'api_discovery': api_discovery,
                 'status': 'queued',
                 'created_at': datetime.now().isoformat(),
                 'progress': 0
@@ -309,6 +321,66 @@ def register_socketio_events(app, socketio):
         emit('stats_update', stats)
 
 
+def discover_api_endpoints(url, session):
+    """Discover API endpoints in a web application."""
+    try:
+        response = session.get(url, timeout=10, verify=False)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        api_endpoints = []
+        
+        # Look for common API patterns in JavaScript
+        scripts = soup.find_all('script')
+        for script in scripts:
+            if script.string:
+                # Common API endpoint patterns
+                api_patterns = [
+                    r'["\']([^"\']*api[^"\']*)["\']',
+                    r'["\']([^"\']*\/rest\/[^"\']*)["\']',
+                    r'["\']([^"\']*\/v\d\/[^"\']*)["\']',
+                    r'["\']([^"\']*\/graphql[^"\']*)["\']',
+                    r'fetch\(["\']([^"\']+)["\']',
+                    r'\.get\(["\']([^"\']+)["\']',
+                    r'\.post\(["\']([^"\']+)["\']'
+                ]
+                
+                for pattern in api_patterns:
+                    matches = re.findall(pattern, script.string, re.IGNORECASE)
+                    for match in matches:
+                        if '/api/' in match.lower() or '/rest/' in match.lower() or '/graphql' in match.lower():
+                            full_url = urljoin(url, match)
+                            api_endpoints.append({
+                                'url': full_url,
+                                'source': 'javascript',
+                                'pattern': pattern
+                            })
+        
+        # Look for API endpoints in meta tags and links
+        for tag in soup.find_all(['link', 'meta', 'a']):
+            href = tag.get('href') or tag.get('content')
+            if href and ('/api/' in href.lower() or '/rest/' in href.lower()):
+                full_url = urljoin(url, href)
+                api_endpoints.append({
+                    'url': full_url,
+                    'source': tag.name,
+                    'pattern': 'href/content attribute'
+                })
+        
+        # Remove duplicates
+        seen_urls = set()
+        unique_endpoints = []
+        for endpoint in api_endpoints:
+            if endpoint['url'] not in seen_urls:
+                seen_urls.add(endpoint['url'])
+                unique_endpoints.append(endpoint)
+        
+        return unique_endpoints[:10]  # Limit to first 10 endpoints
+        
+    except Exception as e:
+        print(f"API discovery error: {e}")
+        return []
+
+
 def execute_scan(app, socketio, scan_id):
     """Execute a single scan in background thread."""
     # Find scan job
@@ -338,6 +410,8 @@ def execute_scan(app, socketio, scan_id):
     try:
         url = scan_job['url']
         verify = scan_job.get('verify', False)
+        deep_scan = scan_job.get('deep_scan', False)
+        api_discovery = scan_job.get('api_discovery', False)
         
         # Update progress
         socketio.emit('scan_update', {
@@ -346,8 +420,52 @@ def execute_scan(app, socketio, scan_id):
             'message': 'Identifying platform...'
         })
         
-        # Perform scan
-        results = app.scanner.scan_target(url)
+        # Perform scan with enhanced options
+        if deep_scan:
+            socketio.emit('scan_update', {
+                'scan_id': scan_id,
+                'progress': 20,
+                'message': 'Performing deep scan...'
+            })
+            # Use enhanced scan method if available
+            if hasattr(app.scanner, 'enhanced_scan_target'):
+                results = app.scanner.enhanced_scan_target(url, use_parallel=True)
+                # Convert to basic format for compatibility
+                results = {
+                    'url': url,
+                    'timestamp': results.timestamp,
+                    'platform_type': results.platform,
+                    'vulnerabilities': [vuln.to_dict() for vuln in results.vulnerability_findings],
+                    'security_assessment': results.security_assessment,
+                    'compliance_summary': results.compliance_summary,
+                    'scan_metadata': results.scan_metadata,
+                    'performance_metrics': results.performance_metrics
+                }
+            else:
+                results = app.scanner.scan_target(url)
+        else:
+            results = app.scanner.scan_target(url)
+        
+        # API Discovery if enabled
+        if api_discovery:
+            socketio.emit('scan_update', {
+                'scan_id': scan_id,
+                'progress': 50,
+                'message': 'Discovering API endpoints...'
+            })
+            
+            # Add API discovery results
+            api_results = discover_api_endpoints(url, app.scanner.session)
+            if api_results:
+                results['api_endpoints'] = api_results
+                # Create vulnerabilities for exposed APIs
+                for endpoint in api_results:
+                    results['vulnerabilities'].append({
+                        'type': 'Exposed API Endpoint',
+                        'severity': 'Medium',
+                        'description': f"Potentially exposed API endpoint: {endpoint['url']}",
+                        'evidence': endpoint
+                    })
         
         socketio.emit('scan_update', {
             'scan_id': scan_id,
