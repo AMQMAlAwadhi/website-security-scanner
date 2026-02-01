@@ -375,7 +375,9 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                         "Implement output encoding and input validation",
                         category="Cross-Site Scripting",
                         owasp="A03:2021 - Injection",
-                        cwe=["CWE-79"]
+                        cwe=["CWE-79"],
+                        parameter=param,
+                        url=url
                     )
 
     def _check_cacheable_https(self, response: requests.Response, url: str):

@@ -310,7 +310,10 @@
         if (message) message.textContent = data.message || '';
         
         if (data.status === 'completed') {
-            if (bar) bar.classList.remove('bg-blue-600'); bar.classList.add('bg-green-600');
+            if (bar) {
+                bar.classList.remove('bg-blue-600');
+                bar.classList.add('bg-green-600');
+            }
             activeScans.delete(scanId);
             
             // Show results link

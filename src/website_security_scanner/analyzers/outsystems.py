@@ -176,7 +176,9 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     "https://owasp.org/www-community/attacks/xss/",
                     "https://cwe.mitre.org/data/definitions/79.html",
                     "https://portswigger.net/web-security/cross-site-scripting"
-                ]
+                ],
+                parameter=vuln.get('parameter', ''),
+                url=vuln.get('url', url)
             )
 
         # DOM-based XSS Detection
@@ -197,7 +199,9 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                 references=[
                     "https://owasp.org/www-community/attacks/DOM_Based_XSS",
                     "https://portswigger.net/web-security/cross-site-scripting/dom-based"
-                ]
+                ],
+                parameter=vuln.get('parameter', ''),
+                url=vuln.get('url', url)
             )
 
         # SQL Injection Detection
@@ -220,7 +224,9 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                         "https://owasp.org/www-community/attacks/SQL_Injection",
                         "https://cwe.mitre.org/data/definitions/89.html",
                         "https://portswigger.net/web-security/sql-injection"
-                    ]
+                    ],
+                    parameter=vuln.get('parameter', ''),
+                    url=vuln.get('url', url)
                 )
             elif vuln['type'] == 'SQL Error Disclosure':
                 self.add_enriched_vulnerability(
@@ -237,7 +243,8 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     references=[
                         "https://cwe.mitre.org/data/definitions/209.html",
                         "https://owasp.org/www-project-web-security-testing-guide/"
-                    ]
+                    ],
+                    url=vuln.get('url', url)
                 )
 
         # CSRF Detection
@@ -260,7 +267,8 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                         "https://owasp.org/www-community/attacks/csrf",
                         "https://cwe.mitre.org/data/definitions/352.html",
                         "https://portswigger.net/web-security/csrf"
-                    ]
+                    ],
+                    url=vuln.get('url', url)
                 )
             elif vuln['type'] == 'Weak CSRF Protection':
                 evidence = f"Form: {vuln['form_method']} {vuln['form_action']}, Issue: {vuln['issue']}"
@@ -278,7 +286,8 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     references=[
                         "https://owasp.org/www-community/attacks/csrf",
                         "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite"
-                    ]
+                    ],
+                    url=vuln.get('url', url)
                 )
             elif vuln['type'] == 'API CSRF Vulnerability':
                 evidence = f"Method: {vuln['method']}, Issue: {vuln['issue']}"
@@ -295,7 +304,8 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     impact="API CSRF vulnerabilities can lead to unauthorized API calls, data modification, and privilege escalation.",
                     references=[
                         "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html"
-                    ]
+                    ],
+                    url=vuln.get('url', url)
                 )
 
         # Open Redirect Detection
@@ -317,7 +327,9 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     references=[
                         "https://cwe.mitre.org/data/definitions/601.html",
                         "https://owasp.org/www-project-web-security-testing-guide/"
-                    ]
+                    ],
+                    parameter=vuln.get('parameter', ''),
+                    url=vuln.get('url', url)
                 )
             elif vuln['type'] == 'Open Redirect via Meta Refresh':
                 self.add_enriched_vulnerability(
@@ -333,7 +345,8 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     impact="Similar to standard open redirects, this can be used for phishing and malware distribution.",
                     references=[
                         "https://cwe.mitre.org/data/definitions/601.html"
-                    ]
+                    ],
+                    url=vuln.get('url', url)
                 )
             elif vuln['type'] == 'Potential Open Redirect via JavaScript':
                 self.add_enriched_vulnerability(
@@ -349,7 +362,8 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     impact="Attackers can craft malicious URLs that redirect victims to phishing sites or malicious content.",
                     references=[
                         "https://cwe.mitre.org/data/definitions/601.html"
-                    ]
+                    ],
+                    url=vuln.get('url', url)
                 )
 
         return {
@@ -580,7 +594,9 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                         cwe=["CWE-798"],
                         background="Hardcoding secrets in client-side code makes them visible to anyone who can access the application. This is a common source of credential leakage.",
                         impact="Exposed secrets can lead to unauthorized access to APIs, databases, and third-party services, potentially resulting in data breaches.",
-                        references=["https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure"]
+                        references=["https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure"],
+                        parameter=match,
+                        url=url
                     )
 
     def _check_cookie_security(self, response: requests.Response):
@@ -719,7 +735,9 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                         "Implement output encoding and input validation",
                         category="Cross-Site Scripting",
                         owasp="A03:2021 - Injection",
-                        cwe=["CWE-79"]
+                        cwe=["CWE-79"],
+                        parameter=param,
+                        url=url
                     )
 
     def _check_path_relative_stylesheets(self, soup: BeautifulSoup):
