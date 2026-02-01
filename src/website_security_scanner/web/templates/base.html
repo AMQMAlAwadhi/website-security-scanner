@@ -43,6 +43,19 @@
             0%, 100% { opacity: 1; }
             50% { opacity: .5; }
         }
+        
+        /* Prevent canvas elements from growing uncontrolled */
+        canvas {
+            max-height: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
+            width: auto !important;
+        }
+        
+        .chart-container {
+            position: relative;
+            overflow: hidden;
+        }
     </style>
     
     {% block extra_css %}{% endblock %}
@@ -83,8 +96,8 @@
     <footer class="bg-gray-800 text-white mt-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div class="text-center">
-                <p>&copy; 2024 Low-Code Security Scanner. Professional Security Assessment Tool.</p>
-                <p class="text-sm text-gray-400 mt-2">Bachelor Thesis: Comparative Security Analysis</p>
+                <p>&copy; 2026 Low-Code Security Scanner. Professional Security Assessment Tool.</p>
+                <p class="text-sm text-gray-400 mt-2">Bachelor Thesis: Low-Code Platforms for E-commerce: Comparative Performance and Security Analysis</p>
             </div>
         </div>
     </footer>

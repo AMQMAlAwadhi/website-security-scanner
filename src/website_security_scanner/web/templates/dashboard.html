@@ -118,6 +118,8 @@
     <!-- WebSocket Script -->
     <script>
         const socket = io();
+        let severityChartInstance = null;
+        let platformChartInstance = null;
 
         socket.on('scan_progress', function(data) {
             updateScanProgress(data);
@@ -150,81 +152,66 @@
         // Load dashboard data
         async function loadDashboard() {
             try {
-                const response = await fetch('/api/scans');
-                const scans = await response.json();
+                const response = await fetch('/api/stats');
+                const data = await response.json();
 
-                updateDashboardStats(scans);
-                updateRecentScans(scans);
-                updateCharts(scans);
+                updateDashboardStats(data);
+                updateRecentScans(data);
+                updateCharts(data);
             } catch (error) {
                 console.error('Failed to load dashboard data:', error);
             }
         }
 
-        function updateDashboardStats(scans) {
-            const activeScans = scans.filter(s => s.status === 'running').length;
-            const highSeverity = scans.reduce((total, scan) => {
-                return total + (scan.vulnerabilities || []).filter(v => v.severity === 'High').length;
-            }, 0);
-
-            document.getElementById('active-scans').textContent = activeScans;
-            document.getElementById('high-severity').textContent = highSeverity;
+        function updateDashboardStats(data) {
+            document.getElementById('active-scans').textContent = data.active_scans || 0;
+            document.getElementById('high-severity').textContent = data.severity_breakdown?.high || 0;
+            document.getElementById('pending-scans').textContent = data.queue_length || 0;
+            document.getElementById('completed-today').textContent = data.completed_scans || 0;
         }
 
-        function updateRecentScans(scans) {
+        function updateRecentScans(data) {
             const recentScansContainer = document.getElementById('recent-scans');
-            const recentScans = scans.slice(0, 5);
-
-            recentScansContainer.innerHTML = recentScans.map(scan => `
-                <div class="flex items-center justify-between p-4 border rounded-lg" data-scan-id="${scan.id}">
-                    <div>
-                        <h4 class="font-medium text-gray-800">${scan.url}</h4>
-                        <p class="text-sm text-gray-600">Platform: ${scan.platform || 'Auto-detect'}</p>
-                    </div>
-                    <div class="text-right">
-                        <div class="flex items-center space-x-2 mb-2">
-                            <span class="scan-status text-sm text-gray-600">${scan.message || 'Initializing...'}</span>
-                            <span class="px-2 py-1 text-xs rounded-full ${
-                                scan.status === 'running' ? 'bg-blue-100 text-blue-800' :
-                                scan.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                'bg-red-100 text-red-800'
-                            }">${scan.status}</span>
-                        </div>
-                        <div class="w-32 bg-gray-200 rounded-full h-2">
-                            <div class="progress-bar bg-blue-600 h-2 rounded-full transition-all duration-300"
-                                 style="width: ${scan.progress || 0}%"></div>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
+            
+            // For now, show a placeholder since we don't have recent scans data in /api/stats
+            if (data.total_scans === 0) {
+                recentScansContainer.innerHTML = '<p class="text-gray-500 text-center">No recent scans available</p>';
+            } else {
+                recentScansContainer.innerHTML = '<p class="text-gray-500 text-center">Recent scans feature coming soon</p>';
+            }
         }
 
-        function updateCharts(scans) {
+        function updateCharts(data) {
+            // Destroy existing charts if they exist
+            if (severityChartInstance) {
+                severityChartInstance.destroy();
+            }
+            if (platformChartInstance) {
+                platformChartInstance.destroy();
+            }
+
             // Severity chart
             const severityData = {
-                High: 0,
-                Medium: 0,
-                Low: 0,
-                Info: 0
+                critical: data.severity_breakdown?.critical || 0,
+                high: data.severity_breakdown?.high || 0,
+                medium: data.severity_breakdown?.medium || 0,
+                low: data.severity_breakdown?.low || 0,
+                info: data.severity_breakdown?.info || 0
             };
 
-            scans.forEach(scan => {
-                (scan.vulnerabilities || []).forEach(vuln => {
-                    severityData[vuln.severity] = (severityData[vuln.severity] || 0) + 1;
-                });
-            });
-
-            new Chart(document.getElementById('severityChart'), {
+            const severityCtx = document.getElementById('severityChart').getContext('2d');
+            severityChartInstance = new Chart(severityCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: Object.keys(severityData),
+                    labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
                     datasets: [{
-                        data: Object.values(severityData),
-                        backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#6b7280']
+                        data: [severityData.critical, severityData.high, severityData.medium, severityData.low, severityData.info],
+                        backgroundColor: ['#dc2626', '#ef4444', '#f59e0b', '#3b82f6', '#6b7280']
                     }]
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: {
                             position: 'bottom'
@@ -233,14 +220,16 @@
                 }
             });
 
-            // Platform chart
-            const platformData = {};
-            scans.forEach(scan => {
-                const platform = scan.platform || 'Unknown';
-                platformData[platform] = (platformData[platform] || 0) + 1;
-            });
+            // Platform chart (placeholder data for now)
+            const platformData = {
+                'Bubble': 0,
+                'OutSystems': 0,
+                'Airtable': 0,
+                'Generic': 0
+            };
 
-            new Chart(document.getElementById('platformChart'), {
+            const platformCtx = document.getElementById('platformChart').getContext('2d');
+            platformChartInstance = new Chart(platformCtx, {
                 type: 'bar',
                 data: {
                     labels: Object.keys(platformData),
@@ -252,9 +241,13 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         y: {
-                            beginAtZero: true
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
                         }
                     }
                 }
