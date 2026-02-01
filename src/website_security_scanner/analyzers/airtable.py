@@ -127,7 +127,9 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     "https://owasp.org/www-community/attacks/xss/",
                     "https://cwe.mitre.org/data/definitions/79.html",
                     "https://portswigger.net/web-security/cross-site-scripting"
-                ]
+                ],
+                parameter=vuln.get('parameter', ''),
+                url=vuln.get('url', url)
             )
 
         # DOM-based XSS Detection
@@ -148,7 +150,9 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                 references=[
                     "https://owasp.org/www-community/attacks/DOM_Based_XSS",
                     "https://portswigger.net/web-security/cross-site-scripting/dom-based"
-                ]
+                ],
+                parameter=vuln.get('parameter', ''),
+                url=vuln.get('url', url)
             )
 
         # SQL Injection Detection
@@ -171,7 +175,9 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                         "https://owasp.org/www-community/attacks/SQL_Injection",
                         "https://cwe.mitre.org/data/definitions/89.html",
                         "https://portswigger.net/web-security/sql-injection"
-                    ]
+                    ],
+                    parameter=vuln.get('parameter', ''),
+                    url=vuln.get('url', url)
                 )
             elif vuln['type'] == 'SQL Error Disclosure':
                 self.add_enriched_vulnerability(
@@ -188,7 +194,8 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     references=[
                         "https://cwe.mitre.org/data/definitions/209.html",
                         "https://owasp.org/www-project-web-security-testing-guide/"
-                    ]
+                    ],
+                    url=vuln.get('url', url)
                 )
 
         # CSRF Detection (CRITICAL for Airtable - Burp found 28 instances)
