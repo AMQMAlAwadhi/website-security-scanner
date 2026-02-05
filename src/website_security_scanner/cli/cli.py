@@ -203,6 +203,17 @@ class SecurityScannerCLI:
                 print(f"  Verification Rate: {verification_rate}%")
             else:
                 print(f"\n{Fore.CYAN}Vulnerability Verification:{Style.RESET_ALL} No vulnerabilities to verify")
+        
+        # Evidence Verification Summary (new)
+        evidence_summary = result.get("evidence_verification_summary", {})
+        if evidence_summary and evidence_summary.get('total_vulnerabilities', 0) > 0:
+            print(f"\n{Fore.CYAN}Evidence Verification:{Style.RESET_ALL}")
+            print(f"  Total: {evidence_summary.get('total_vulnerabilities', 0)}")
+            print(f"  {Fore.GREEN}Verified: {evidence_summary.get('verified', 0)}{Style.RESET_ALL}")
+            print(f"  {Fore.YELLOW}Stale: {evidence_summary.get('stale', 0)}{Style.RESET_ALL}")
+            print(f"  Unverified: {evidence_summary.get('unverified', 0)}")
+            print(f"  Live Checked: {evidence_summary.get('live_checked', 0)}")
+            print(f"  Verification Rate: {evidence_summary.get('verification_rate', 0)}%")
 
         print()
 

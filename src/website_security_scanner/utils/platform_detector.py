@@ -10,7 +10,7 @@ Author: Bachelor Thesis Project - Low-Code Platforms Security Analysis
 
 import re
 import requests
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
@@ -288,11 +288,82 @@ class AdvancedPlatformDetector:
         
         return results
     
+    # Minimum confidence threshold for platform detection (percentage)
+    MIN_CONFIDENCE_THRESHOLD = 30
+    
+    # High confidence threshold for automatic selection
+    HIGH_CONFIDENCE_THRESHOLD = 70
+
     def _calculate_confidence(self, score: int) -> int:
         """Calculate confidence percentage from score."""
-        # Normalize score to 0-100 range
-        confidence = min(100, max(0, score))
-        return confidence
+        # Normalize score to 0-100 range with diminishing returns for very high scores
+        # Use a more conservative formula to avoid over-confidence
+        if score <= 0:
+            return 0
+        elif score <= 50:
+            # Linear scaling for lower scores
+            confidence = score * 1.2
+        else:
+            # Diminishing returns for higher scores
+            confidence = 60 + (score - 50) * 0.8
+        
+        return min(100, max(0, int(confidence)))
+    
+    def get_primary_platform(self, detection_result: Dict[str, Any]) -> Tuple[Optional[str], int]:
+        """
+        Get the primary detected platform with confidence gating.
+        
+        Args:
+            detection_result: Detection result dictionary
+            
+        Returns:
+            Tuple of (platform_name, confidence) or (None, 0) if no confident detection
+        """
+        platforms = detection_result.get('detected_platforms', [])
+        confidence_scores = detection_result.get('confidence_scores', {})
+        
+        if not platforms or platforms == ['unknown']:
+            return None, 0
+        
+        primary_platform = platforms[0]
+        confidence = confidence_scores.get(primary_platform, 0)
+        
+        # Apply confidence gating
+        if confidence < self.MIN_CONFIDENCE_THRESHOLD:
+            return None, confidence
+        
+        return primary_platform, confidence
+    
+    def should_use_generic_scanner(self, detection_result: Dict[str, Any]) -> bool:
+        """
+        Determine if generic scanner should be used due to low confidence.
+        
+        Args:
+            detection_result: Detection result dictionary
+            
+        Returns:
+            True if generic scanner should be used
+        """
+        platform, confidence = self.get_primary_platform(detection_result)
+        
+        # Use generic if no platform detected or confidence too low
+        if platform is None:
+            return True
+        
+        # Use generic if confidence is below threshold
+        if confidence < self.MIN_CONFIDENCE_THRESHOLD:
+            return True
+        
+        # Check for ambiguous results (multiple platforms with similar confidence)
+        confidence_scores = detection_result.get('confidence_scores', {})
+        if len(confidence_scores) > 1:
+            sorted_confidences = sorted(confidence_scores.values(), reverse=True)
+            if len(sorted_confidences) >= 2:
+                # If top two platforms have similar confidence (within 15 points)
+                if sorted_confidences[0] - sorted_confidences[1] < 15:
+                    return True
+        
+        return False
     
     def get_platform_summary(self, detection_result: Dict[str, Any]) -> str:
         """Get a human-readable platform summary."""

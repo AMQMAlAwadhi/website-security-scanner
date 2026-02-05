@@ -14,6 +14,7 @@ from .utils import (
     extract_domain,
     calculate_security_score,
 )
+from .evidence_verifier import EvidenceVerifier, verify_vulnerabilities
 
 __all__ = [
     "setup_scanner_logger",
@@ -23,4 +24,6 @@ __all__ = [
     "is_valid_url",
     "extract_domain",
     "calculate_security_score",
+    "EvidenceVerifier",
+    "verify_vulnerabilities",
 ]

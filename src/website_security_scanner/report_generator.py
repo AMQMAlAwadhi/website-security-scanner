@@ -746,6 +746,44 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
 
                 if verification.get('error'):
                     out.append(f"<br><span class=\"TEXT\" style=\"color: red;\"><b>Verification Error:</b> {verification['error']}</span>")
+            
+            # Evidence Verification (new section)
+            evidence_verification = v.get('evidence_verification', {})
+            if evidence_verification:
+                out.append('<h2>Evidence Verification</h2>')
+                ev_status = evidence_verification.get('verification_status', 'unknown')
+                
+                # Status with styling
+                if ev_status == 'verified':
+                    status_display = '<span style="color: #10b981;">✓ Verified</span>'
+                elif ev_status == 'stale':
+                    status_display = '<span style="color: #f59e0b;">⚠ Stale</span>'
+                elif ev_status == 'failed':
+                    status_display = '<span style="color: #dc2626;">✗ Failed</span>'
+                else:
+                    status_display = '<span style="color: #6b7280;">○ Unverified</span>'
+                
+                out.append(f"<span class=\"TEXT\"><b>Status:</b> {status_display}<br>")
+                
+                # Evidence hash
+                ev_hash = evidence_verification.get('evidence_hash', 'N/A')
+                out.append(f"<b>Evidence Hash:</b> <code>{ev_hash}</code><br>")
+                
+                # Timestamp
+                ev_timestamp = evidence_verification.get('timestamp', 'N/A')
+                out.append(f"<b>Timestamp:</b> {ev_timestamp}<br>")
+                
+                # Live check status
+                if evidence_verification.get('live_check_performed'):
+                    out.append(f"<b>Live Check:</b> Performed<br>")
+                    if evidence_verification.get('response_time_ms'):
+                        out.append(f"<b>Response Time:</b> {evidence_verification['response_time_ms']}ms<br>")
+                
+                # Rechecked flag
+                if evidence_verification.get('rechecked'):
+                    out.append(f"<b>Rechecked:</b> Yes<br>")
+                
+                out.append("</span>")
 
             # References
             if v.get('references'):

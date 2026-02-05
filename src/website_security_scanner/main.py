@@ -36,6 +36,7 @@ from .analyzers import (
 from .report_generator import ProfessionalReportGenerator
 from .result_transformer import transform_results_for_professional_report
 from .utils.platform_detector import AdvancedPlatformDetector
+from .utils.evidence_verifier import verify_vulnerabilities
 from .models.vulnerability import EnhancedVulnerability, ScanResult
 from .plugins.plugin_manager import PluginManager
 from .utils.parallel_scanner import ParallelScanner, create_parallel_scan
@@ -251,16 +252,20 @@ class LowCodeSecurityScanner:
         return compliance_coverage
 
     def identify_platform(self, url):
-        """Enhanced platform identification using advanced detection"""
+        """Enhanced platform identification using advanced detection with confidence gating."""
         try:
             # Use advanced platform detection
             detection_result = self.platform_detector.detect_platform_advanced(url)
             
-            if detection_result['detected_platforms'] and detection_result['detected_platforms'][0] != 'unknown':
-                platform = detection_result['detected_platforms'][0]
-                confidence = detection_result['confidence_scores'].get(platform, 0)
+            # Apply confidence gating
+            platform, confidence = self.platform_detector.get_primary_platform(detection_result)
+            
+            if platform and confidence >= self.platform_detector.MIN_CONFIDENCE_THRESHOLD:
                 print(f"[+] Platform detected: {platform} ({confidence}% confidence)")
                 return platform
+            elif platform:
+                print(f"[!] Platform detection uncertain: {platform} ({confidence}% confidence) - using generic scanner")
+                return 'generic'
             else:
                 # Fallback to basic detection
                 return self._basic_platform_identification(url)
@@ -348,7 +353,7 @@ class LowCodeSecurityScanner:
         return ssl_info
 
     def analyze_bubble_app(self, url, response):
-        """Specific analysis for Bubble.io applications"""
+        """Specific analysis for Bubble.io applications with evidence verification."""
         print("[+] Analyzing Bubble.io application using BubbleAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
         analyzer = BubbleAnalyzer(self.session)
@@ -356,7 +361,16 @@ class LowCodeSecurityScanner:
 
         # Perform active verification of found vulnerabilities
         verification_summary = analyzer.verify_vulnerabilities(url)
-
+        
+        # Perform evidence verification for all vulnerabilities
+        vulnerabilities = results.get("vulnerabilities", [])
+        if vulnerabilities:
+            verified_vulns, evidence_summary = verify_vulnerabilities(
+                vulnerabilities, self.session, url, response
+            )
+            results["vulnerabilities"] = verified_vulns
+            results["evidence_verification_summary"] = evidence_summary
+        
         # Map BubbleAnalyzer findings to the format expected by scanner
         return {
             "bubble_specific": {
@@ -367,10 +381,11 @@ class LowCodeSecurityScanner:
             },
             "vulnerabilities": results.get("vulnerabilities", []),
             "verification_summary": verification_summary,
+            "evidence_verification_summary": results.get("evidence_verification_summary", {}),
         }
 
     def analyze_outsystems_app(self, url, response):
-        """Specific analysis for OutSystems applications"""
+        """Specific analysis for OutSystems applications with evidence verification."""
         print("[+] Analyzing OutSystems application using OutSystemsAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
         analyzer = OutSystemsAnalyzer(self.session)
@@ -378,6 +393,15 @@ class LowCodeSecurityScanner:
 
         # Perform active verification of found vulnerabilities
         verification_summary = analyzer.verify_vulnerabilities(url)
+        
+        # Perform evidence verification for all vulnerabilities
+        vulnerabilities = results.get("vulnerabilities", [])
+        if vulnerabilities:
+            verified_vulns, evidence_summary = verify_vulnerabilities(
+                vulnerabilities, self.session, url, response
+            )
+            results["vulnerabilities"] = verified_vulns
+            results["evidence_verification_summary"] = evidence_summary
 
         return {
             "outsystems_specific": {
@@ -387,10 +411,11 @@ class LowCodeSecurityScanner:
             },
             "vulnerabilities": results.get("vulnerabilities", []),
             "verification_summary": verification_summary,
+            "evidence_verification_summary": results.get("evidence_verification_summary", {}),
         }
 
     def analyze_airtable_app(self, url, response):
-        """Specific analysis for Airtable applications"""
+        """Specific analysis for Airtable applications with evidence verification."""
         print("[+] Analyzing Airtable application using AirtableAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
         analyzer = AirtableAnalyzer(self.session)
@@ -398,6 +423,15 @@ class LowCodeSecurityScanner:
 
         # Perform active verification of found vulnerabilities
         verification_summary = analyzer.verify_vulnerabilities(url)
+        
+        # Perform evidence verification for all vulnerabilities
+        vulnerabilities = results.get("vulnerabilities", [])
+        if vulnerabilities:
+            verified_vulns, evidence_summary = verify_vulnerabilities(
+                vulnerabilities, self.session, url, response
+            )
+            results["vulnerabilities"] = verified_vulns
+            results["evidence_verification_summary"] = evidence_summary
 
         return {
             "airtable_specific": {
@@ -407,10 +441,11 @@ class LowCodeSecurityScanner:
             },
             "vulnerabilities": results.get("vulnerabilities", []),
             "verification_summary": verification_summary,
+            "evidence_verification_summary": results.get("evidence_verification_summary", {}),
         }
 
     def analyze_generic_app(self, url, response):
-        """Generic analysis for unknown platforms"""
+        """Generic analysis for unknown platforms with evidence verification."""
         print("[+] Performing generic security analysis using GenericWebAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
         analyzer = GenericWebAnalyzer(self.session)
@@ -418,11 +453,21 @@ class LowCodeSecurityScanner:
 
         # Perform active verification of found vulnerabilities
         verification_summary = analyzer.verify_vulnerabilities(url)
+        
+        # Perform evidence verification for all vulnerabilities
+        vulnerabilities = results.get("vulnerabilities", [])
+        if vulnerabilities:
+            verified_vulns, evidence_summary = verify_vulnerabilities(
+                vulnerabilities, self.session, url, response
+            )
+            results["vulnerabilities"] = verified_vulns
+            results["evidence_verification_summary"] = evidence_summary
 
         return {
             "generic_analysis": results.get("generic_findings", {}),
             "vulnerabilities": results.get("vulnerabilities", []),
             "verification_summary": verification_summary,
+            "evidence_verification_summary": results.get("evidence_verification_summary", {}),
         }
 
     def check_common_vulnerabilities(self, url, response):

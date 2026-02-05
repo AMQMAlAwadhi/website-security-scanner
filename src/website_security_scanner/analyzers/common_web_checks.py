@@ -59,8 +59,83 @@ class CommonWebChecksMixin:
             entries.append((script_url, resp.text))
         return entries
 
-    def _check_session_tokens_in_url(self, url: str):
-        """Check for session tokens in URL."""
+    def _get_set_cookie_headers(self, response: requests.Response) -> List[str]:
+        """Extract Set-Cookie headers from response."""
+        raw_headers = getattr(response.raw, "headers", None) if hasattr(response, 'raw') else None
+        if raw_headers is not None and hasattr(raw_headers, "get_all"):
+            values = raw_headers.get_all("Set-Cookie")
+            return [v for v in values if v]
+
+        value = response.headers.get("Set-Cookie")
+        if not value:
+            return []
+
+        return [value]
+
+    def _is_bubble_workflow_session(self, url: str, param_name: str, param_value: str) -> bool:
+        """
+        Check if a URL parameter is a Bubble workflow session (false positive).
+        
+        Bubble.io uses session-like parameters in workflow URLs that are not
+        actual authentication sessions.
+        
+        Args:
+            url: Full URL
+            param_name: Name of the parameter
+            param_value: Value of the parameter
+            
+        Returns:
+            True if this is a Bubble workflow parameter (false positive)
+        """
+        # Bubble-specific patterns that indicate workflow parameters
+        bubble_indicators = [
+            r'bubbleapps\.io',
+            r'bubble\.io',
+            r'api/1\.1/wf/',
+            r'version-\w+/api/',
+            r'\.bubble\.'
+        ]
+        
+        is_bubble_url = any(re.search(pattern, url, re.IGNORECASE) for pattern in bubble_indicators)
+        
+        if not is_bubble_url:
+            return False
+        
+        # Bubble workflow parameters that are NOT authentication sessions
+        bubble_workflow_params = [
+            'workflow_session',
+            'wf_session',
+            'bubble_session',
+            'instance_session',
+            'test_session',
+            'preview_session',
+        ]
+        
+        # Check if parameter name matches known Bubble workflow patterns
+        param_lower = param_name.lower()
+        if any(bp in param_lower for bp in bubble_workflow_params):
+            return True
+        
+        # Check for Bubble-specific value patterns (UUID-like but not real sessions)
+        if param_name.lower() in ['session', 'token']:
+            # Bubble workflow values are often UUIDs or contain specific patterns
+            if re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', param_value, re.I):
+                # This is likely a Bubble workflow ID, not a user session
+                return True
+            # Bubble test/preview sessions often have specific prefixes
+            if re.match(r'^(test_|preview_|debug_|wf_)', param_value, re.I):
+                return True
+        
+        return False
+
+    def _check_session_tokens_in_url(self, url: str, is_bubble_context: bool = False):
+        """
+        Check for session tokens in URL with platform-specific filtering.
+        
+        Args:
+            url: URL to check
+            is_bubble_context: Whether this is a Bubble.io application
+        """
         session_params = [
             "session",
             "token",
@@ -72,11 +147,32 @@ class CommonWebChecksMixin:
             "nonce",
             "auth_token",
             "code",
+            "access_token",
+            "id_token",
         ]
 
         found_params = []
+        parsed = urlparse(url)
+        query_params = parse_qs(parsed.query)
+        
         for param in session_params:
             if re.search(rf"[?&]{param}=", url, re.IGNORECASE):
+                # Check for false positives in Bubble contexts
+                if is_bubble_context or self._is_bubble_workflow_session(url, param, query_params.get(param, [''])[0] if param in query_params else ''):
+                    # Additional validation: check if this is a real authentication token
+                    values = query_params.get(param, [])
+                    if values:
+                        value = values[0]
+                        # Skip if this looks like a Bubble workflow parameter
+                        if self._is_bubble_workflow_session(url, param, value):
+                            continue
+                        # Skip short values that might be non-sensitive identifiers
+                        if len(value) < 16:
+                            continue
+                        # Skip obvious placeholder/test values
+                        if re.match(r'^(test|example|demo|sample|xxx|yyy|abc123)', value, re.I):
+                            continue
+                
                 found_params.append(param)
 
         if not found_params:
