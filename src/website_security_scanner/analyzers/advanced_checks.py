@@ -33,34 +33,72 @@ class AdvancedChecksMixin:
         return [value]
 
     def _check_http2_support(self, url: str):
-        """Detect whether the origin negotiates HTTP/2 with an actual request."""
+        """
+        Detect whether the origin supports HTTP/2 with proper negotiation.
+        
+        This check uses ALPN (Application-Layer Protocol Negotiation) to properly
+        detect HTTP/2 support rather than just checking the response version.
+        """
+        import ssl
+        import socket
 
         parsed = urlparse(url)
         if parsed.scheme.lower() != "https":
             return
 
-        if not parsed.hostname:
+        hostname = parsed.hostname
+        if not hostname:
             return
 
+        http2_supported = False
+        http2_negotiated = False
+        
         try:
-            with httpx.Client(http2=True, timeout=6.0, follow_redirects=True) as client:
-                response = client.get(url)
-        except httpx.HTTPError:
-            return
-
-        if response.http_version != "HTTP/2":
-            return
-
-        self.add_enriched_vulnerability(
-            "Hidden HTTP/2",
-            "Info",
-            "Origin negotiated HTTP/2 for the request; ensure HTTP/2-specific hardening (HPACK/DoS controls, reverse-proxy config).",
-            f"HTTP version negotiated: {response.http_version}",
-            "Review HTTP/2 configuration at the edge (WAF/CDN/proxy), apply rate limits, and keep TLS stack updated.",
-            category="Protocol Security",
-            owasp="A05:2021 - Security Misconfiguration",
-            cwe=["CWE-16"],
-        )
+            # First check: Test TLS ALPN for h2 support
+            context = ssl.create_default_context()
+            context.set_alpn_protocols(['h2', 'http/1.1'])
+            
+            with socket.create_connection((hostname, 443), timeout=5) as sock:
+                with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+                    negotiated_protocol = ssock.selected_alpn_protocol()
+                    if negotiated_protocol == 'h2':
+                        http2_supported = True
+        except (ssl.SSLError, socket.error, socket.timeout):
+            pass
+        
+        # Second check: Make an actual HTTP/2 request if ALPN indicates support
+        if http2_supported:
+            try:
+                with httpx.Client(
+                    http2=True, 
+                    timeout=6.0, 
+                    follow_redirects=True,
+                    verify=True
+                ) as client:
+                    response = client.get(url)
+                    if response.http_version == "HTTP/2":
+                        http2_negotiated = True
+            except (httpx.HTTPError, Exception):
+                http2_supported = False
+        
+        # Only report if HTTP/2 is properly supported AND negotiated
+        if http2_supported and http2_negotiated:
+            self.add_enriched_vulnerability(
+                "HTTP/2 Protocol Supported",
+                "Info",
+                "Target supports and successfully negotiates HTTP/2. Review HTTP/2-specific hardening (HPACK/DoS controls, reverse-proxy config).",
+                f"HTTP/2 confirmed via ALPN and successful request",
+                "Review HTTP/2 configuration at the edge (WAF/CDN/proxy), apply rate limits, and keep TLS stack updated.",
+                category="Protocol Security",
+                owasp="A05:2021 - Security Misconfiguration",
+                cwe=["CWE-16"],
+                background="HTTP/2 provides performance improvements over HTTP/1.1 but introduces new attack vectors such as HPACK bomb attacks and stream multiplexing abuse.",
+                impact="Without proper HTTP/2 hardening, attackers may exploit protocol-specific vulnerabilities to cause denial of service or bypass security controls.",
+                references=[
+                    "https://www.rfc-editor.org/rfc/rfc7540",
+                    "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/17-Testing_for_HTTP2",
+                ],
+            )
 
     def _check_request_url_override(self, url: str):
         """Active check for request URL override behavior.
