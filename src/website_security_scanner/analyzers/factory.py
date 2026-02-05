@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 from .base import BaseAnalyzer
 from .bubble import BubbleAnalyzer
 from .outsystems import OutSystemsAnalyzer
-from .airtable import AirtableAnalyzer
+from .airtable_enhanced import AirtableAnalyzer
 from .generic import GenericWebAnalyzer
 from .reports import SecurityReportGenerator
 

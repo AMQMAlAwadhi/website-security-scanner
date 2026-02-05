@@ -19,11 +19,12 @@ from bs4 import BeautifulSoup
 
 from .base import BaseAnalyzer
 from .advanced_checks import AdvancedChecksMixin
+from .common_web_checks import CommonWebChecksMixin
 from .verification_metadata_mixin import VerificationMetadataMixin
 from ..utils.evidence_builder import EvidenceBuilder
 
 
-class GenericWebAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnalyzer):
+class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMetadataMixin, BaseAnalyzer):
     """
     Generic web application security analyzer.
     
@@ -75,7 +76,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAna
 
         # Generic security checks
         self._check_session_tokens_in_url(url)
-        self._check_secrets_in_javascript(js_content, url)
+        self._check_secrets_in_javascript(js_content, url, soup)
         self._check_cookie_security(response)
         self._check_csp_policy(response)
         self._check_clickjacking(response)
@@ -239,225 +240,28 @@ class GenericWebAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAna
                         )
 
     def _check_session_tokens_in_url(self, url: str):
-        """Check for session tokens in URL"""
-        if re.search(r'[?&](session|token|sid)=', url, re.IGNORECASE):
-            session_evidence = EvidenceBuilder.url_parameter(
-                "session|token|sid",
-                "Session token found in URL parameters"
-            )
-            self.add_enriched_vulnerability(
-                "Session Token in URL",
-                "Medium",
-                "Session token found in URL",
-                session_evidence,
-                "Use secure cookies for session management",
-                category="Session Management",
-                owasp="A07:2021 - Identification and Authentication Failures",
-                cwe=["CWE-384"]
-            )
+        return CommonWebChecksMixin._check_session_tokens_in_url(self, url)
 
-    def _check_secrets_in_javascript(self, js_content: str, url: str):
-        """Check for secrets in JavaScript"""
-        secret_patterns = [
-            {
-                "pattern": r'(?i)(?:api[_-]?key|apikey|access[_-]?token|auth[_-]?token|client_secret|secret|password|passwd)\s*[:=]\s*["\']([^"\']{8,})["\']',
-                "description": "Hardcoded credential/token",
-                "group": 1,
-            },
-        ]
-
-        placeholder_values = {
-            "changeme",
-            "change-me",
-            "replace_me",
-            "replace-me",
-            "example",
-            "sample",
-            "test",
-            "dummy",
-            "your_api_key",
-            "your-api-key",
-            "yourapikey",
-            "your_token",
-            "your-token",
-            "yourpassword",
-        }
-
-        for entry in secret_patterns:
-            for match in re.finditer(entry["pattern"], js_content):
-                value = match.group(entry["group"]).strip()
-                value_lower = value.lower()
-
-                if value_lower in placeholder_values:
-                    continue
-
-                if re.fullmatch(r"[xX*]{6,}", value):
-                    continue
-
-                self.add_enriched_vulnerability(
-                    "Potential Secret in JavaScript",
-                    "High",
-                    f"{entry['description']} found: {value[:10]}...",
-                    value[:20],
-                    "Remove secrets from client-side code",
-                    category="Secret Management",
-                    owasp="A02:2021 - Cryptographic Failures",
-                    cwe=["CWE-798"],
-                    parameter=value,
-                    url=url,
-                )
+    def _check_secrets_in_javascript(self, js_content: str, url: str, soup: BeautifulSoup = None):
+        return CommonWebChecksMixin._check_secrets_in_javascript(self, js_content, url, soup)
 
     def _check_cookie_security(self, response: requests.Response):
-        """Check cookie security headers"""
-        cookies = self._get_set_cookie_headers(response)
-
-        for cookie in cookies:
-            cookie_name = cookie.split("=", 1)[0] if "=" in cookie else "Unknown"
-            cookie_lower = cookie.lower()
-
-            if "secure" not in cookie_lower:
-                self.add_enriched_vulnerability(
-                    "Insecure Cookie (Missing Secure Flag)",
-                    "Medium",
-                    f"Cookie '{cookie_name}' lacks Secure flag",
-                    cookie[:100],
-                    "Set the 'Secure' flag for all cookies to ensure they are only transmitted over HTTPS.",
-                    category="Session Management",
-                    owasp="A05:2021 - Security Misconfiguration",
-                    cwe=["CWE-614"]
-                )
-
-            if "httponly" not in cookie_lower:
-                self.add_enriched_vulnerability(
-                    "Cookie without HttpOnly Flag",
-                    "Low",
-                    f"Cookie '{cookie_name}' lacks HttpOnly flag",
-                    cookie[:100],
-                    "Set the 'HttpOnly' flag for all cookies to prevent them from being accessed by client-side scripts.",
-                    category="Session Management",
-                    owasp="A05:2021 - Security Misconfiguration",
-                    cwe=["CWE-1004"]
-                )
+        return CommonWebChecksMixin._check_cookie_security(self, response)
 
     def _check_csp_policy(self, response: requests.Response):
-        """Check Content Security Policy"""
-        csp = response.headers.get("Content-Security-Policy", "")
-        if not csp:
-            self.add_enriched_vulnerability(
-                "Missing Content Security Policy",
-                "Low",
-                "No CSP header found",
-                "",
-                "Implement Content Security Policy",
-                category="Security Headers",
-                owasp="A05:2021 - Security Misconfiguration",
-                cwe=["CWE-693"]
-            )
+        return CommonWebChecksMixin._check_csp_policy(self, response)
 
     def _check_clickjacking(self, response: requests.Response):
-        """Check for clickjacking protection"""
-        xfo = response.headers.get("X-Frame-Options", "")
-        if not xfo:
-            self.add_enriched_vulnerability(
-                "Missing Clickjacking Protection",
-                "Low",
-                "No X-Frame-Options header",
-                "",
-                "Implement X-Frame-Options header",
-                category="Security Headers",
-                owasp="A05:2021 - Security Misconfiguration",
-                cwe=["CWE-693"]
-            )
+        return CommonWebChecksMixin._check_clickjacking(self, response)
 
     def _check_information_disclosure(self, js_content: str, html_content: str, response: requests.Response):
-        """Check for information disclosure"""
-        error_patterns = [
-            r'error[:\s]+["\']([^"\']+)["\']',
-            r'exception[:\s]+["\']([^"\']+)["\']',
-            r'stack\s*trace',
-            r'debug\s*info',
-        ]
-
-        for pattern in error_patterns:
-            if re.search(pattern, js_content + html_content, re.IGNORECASE):
-                self.add_enriched_vulnerability(
-                    "Information Disclosure",
-                    "Low",
-                    "Potential error information exposed",
-                    "",
-                    "Review error handling and information disclosure",
-                    category="Information Disclosure",
-                    owasp="A09:2021 - Security Logging and Monitoring Failures",
-                    cwe=["CWE-200"]
-                )
-                break
+        return CommonWebChecksMixin._check_information_disclosure(self, js_content, html_content, response)
 
     def _check_reflected_input(self, url: str, response: requests.Response, html_content: str):
-        """Check for reflected input (potential XSS)"""
-        parsed = urlparse(url)
-        params = parse_qs(parsed.query)
-        
-        for param, values in params.items():
-            for value in values:
-                if value in html_content:
-                    self.add_enriched_vulnerability(
-                        "Reflected Input (Potential XSS)",
-                        "Medium",
-                        f"Input parameter '{param}' is reflected in response",
-                        f"{param}={value}",
-                        "Implement output encoding and input validation",
-                        category="Cross-Site Scripting",
-                        owasp="A03:2021 - Injection",
-                        cwe=["CWE-79"],
-                        parameter=param,
-                        url=url
-                    )
+        return CommonWebChecksMixin._check_reflected_input(self, url, response, html_content)
 
     def _check_cacheable_https(self, response: requests.Response, url: str):
-        """Check for cacheable HTTPS responses"""
-        if not url.lower().startswith("https://"):
-            return
-
-        cache_control = response.headers.get("Cache-Control", "")
-        pragma = response.headers.get("Pragma", "")
-        cache_control_lower = cache_control.lower()
-
-        if any(directive in cache_control_lower for directive in ["no-store", "no-cache", "private"]):
-            return
-
-        if "no-cache" in pragma.lower():
-            return
-
-        request_headers = {}
-        if getattr(response, "request", None) is not None:
-            request_headers = getattr(response.request, "headers", {}) or {}
-
-        sensitive_request = any(
-            header in request_headers for header in ["Authorization", "Cookie"]
-        )
-
-        sensitive_cookie_names = ["session", "auth", "token", "sid", "jwt", "sso"]
-        sensitive_cookie = False
-        for cookie in self._get_set_cookie_headers(response):
-            cookie_name = cookie.split("=", 1)[0].strip().lower()
-            if any(name in cookie_name for name in sensitive_cookie_names):
-                sensitive_cookie = True
-                break
-
-        if not sensitive_request and not sensitive_cookie:
-            return
-
-        self.add_enriched_vulnerability(
-            "Cacheable HTTPS Response",
-            "Low",
-            "Potentially cacheable HTTPS response detected; manual verification is required to confirm sensitive content exposure.",
-            f"Cache-Control={cache_control} Pragma={pragma}",
-            "Apply Cache-Control: no-store (or private, no-cache) to sensitive/authenticated pages and confirm behavior via manual testing.",
-            confidence="Tentative",
-            category="Security Headers",
-            owasp="A05:2021 - Security Misconfiguration",
-            cwe=["CWE-525"]
-        )
+        return CommonWebChecksMixin._check_cacheable_https(self, response, url)
 
     def _check_open_redirection(self, js_content: str):
         """Check for open redirection vulnerabilities"""
