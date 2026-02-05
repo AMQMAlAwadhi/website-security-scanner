@@ -19,10 +19,11 @@ from bs4 import BeautifulSoup
 
 from .base import BaseAnalyzer
 from .advanced_checks import AdvancedChecksMixin
+from .verification_metadata_mixin import VerificationMetadataMixin
 from ..utils.evidence_builder import EvidenceBuilder
 
 
-class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
+class GenericWebAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnalyzer):
     """
     Generic web application security analyzer.
     

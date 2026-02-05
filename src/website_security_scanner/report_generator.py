@@ -656,7 +656,8 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
             lines.append(f'<p class="TOCH0"><a href="#{idx}">{idx}.&nbsp;{title}</a></p>')
             for j, inst in enumerate(v.get('instances', []), 1):
                 url = inst.get('url', '')
-                lines.append(f'<p class="TOCH1"><a href="#{idx}.{j}">{idx}.{j}.&nbsp;{url}</a></p>')
+                # Make URL clickable external link with internal navigation
+                lines.append(f'<p class="TOCH1"><a href="#{idx}.{j}" title="Navigate to details">{idx}.{j}.&nbsp;<a href="{url}" target="_blank" style="color: #3b82f6; text-decoration: underline;">{url}</a></a></p>')
         return '\n'.join(lines)
     
     def _generate_burp_findings(self, results):
@@ -757,7 +758,12 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
             instances = v.get('instances', [])
             if instances:
                 out.append(f"<br><span class=\"TEXT\">There are {len(instances)} instances of this issue:</span>")
-                out.append('<ul class="TEXT">' + ''.join([f"<li><a href=\"#{i}.{j+1}\">{i}.{j+1}. {inst.get('url','')}</a></li>" for j, inst in enumerate(instances)]) + '</ul>')
+                # Make URLs clickable external links with internal navigation
+                instance_links = []
+                for j, inst in enumerate(instances):
+                    url = inst.get('url', '')
+                    instance_links.append(f"<li><a href=\"#{i}.{j+1}\" title=\"Navigate to details\">{i}.{j+1}.</a> <a href=\"{url}\" target=\"_blank\" style=\"color: #3b82f6; text-decoration: underline;\">{url}</a></li>")
+                out.append('<ul class="TEXT">' + ''.join(instance_links) + '</ul>')
             # Classifications
             cwes = v.get('cwe', [])
             capecs = v.get('capec', [])
@@ -772,7 +778,8 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
             for j, inst in enumerate(v.get('instances', []), 1):
                 rid = f"{i}.{j}"
                 url = inst.get('url','')
-                out.append(f"<br><span class=\"BODH1\" id=\"{rid}\">{rid}.&nbsp;{url}</span>")
+                # Make URL clickable in section header
+                out.append(f"<br><span class=\"BODH1\" id=\"{rid}\">{rid}.&nbsp;<a href=\"{url}\" target=\"_blank\" style=\"color: white; text-decoration: underline;\">{url}</a></span>")
                 req = inst.get('request')
                 if req:
                     out.append('<h2>Request</h2>')

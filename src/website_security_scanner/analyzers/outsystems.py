@@ -20,6 +20,7 @@ from bs4 import BeautifulSoup
 
 from .base import BaseAnalyzer
 from .advanced_checks import AdvancedChecksMixin
+from .verification_metadata_mixin import VerificationMetadataMixin
 from .vulnerability_detection import (
     XSSDetector,
     SQLInjectionDetector,
@@ -29,7 +30,7 @@ from .vulnerability_detection import (
 from ..utils.evidence_builder import EvidenceBuilder
 
 
-class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
+class OutSystemsAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnalyzer):
     """
     Specialized analyzer for OutSystems applications.
     

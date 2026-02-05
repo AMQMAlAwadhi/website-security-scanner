@@ -29,6 +29,8 @@ def get_analyzer_for_platform(platform_type: str, session: requests.Session) -> 
         "outsystems.dev": OutSystemsAnalyzer,
         "airtable": AirtableAnalyzer,
         "airtable.com": AirtableAnalyzer,
+        "mern": GenericWebAnalyzer,
+        "mern-stack": GenericWebAnalyzer,
         "generic": GenericWebAnalyzer,
         "unknown": GenericWebAnalyzer,
     }
@@ -67,6 +69,8 @@ def get_supported_platforms() -> list:
         "outsystems", 
         "airtable.com",
         "generic",
+        "mern",
+        "mern-stack",
     ]
 
 
@@ -121,6 +125,17 @@ def get_platform_info(platform_type: str) -> dict:
                 "Cross-site scripting",
                 "SQL injection",
                 "File upload issues",
+            ]
+        },
+        "mern": {
+            "name": "MERN Stack",
+            "description": "MongoDB Express React Node.js applications",
+            "analyzer": "GenericWebAnalyzer",
+            "common_vulnerabilities": [
+                "NoSQL injection",
+                "XSS in React components",
+                "JWT token issues",
+                "CORS misconfiguration",
             ]
         }
     }

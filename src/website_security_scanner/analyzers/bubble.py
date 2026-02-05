@@ -22,16 +22,18 @@ from bs4 import BeautifulSoup
 
 from .base import BaseAnalyzer
 from .advanced_checks import AdvancedChecksMixin
+from .verification_metadata_mixin import VerificationMetadataMixin
 from .vulnerability_detection import (
     XSSDetector,
     SQLInjectionDetector,
     CSRFDetector,
     OpenRedirectDetector,
 )
+from .enhanced_checks import EnhancedSecurityChecks
 from ..utils.evidence_builder import EvidenceBuilder
 
 
-class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
+class BubbleAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnalyzer):
     """
     Specialized analyzer for Bubble.io applications.
     
@@ -58,6 +60,9 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         self.sqli_detector = SQLInjectionDetector(session)
         self.csrf_detector = CSRFDetector(session)
         self.redirect_detector = OpenRedirectDetector(session)
+        
+        # Initialize enhanced security checks
+        self.enhanced_checks = EnhancedSecurityChecks(session)
 
     def analyze(
         self, url: str, response: requests.Response, soup: BeautifulSoup
@@ -120,10 +125,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         self._check_robots_txt(url)
         self._check_security_headers_informational(response)
         self._check_tls_certificate(url)
-        self._check_stripe_public_keys(js_content)
-        self._check_dom_open_redirect(js_content, url)
-
-        # NEW ENHANCED CHECKS - Bubble missing vulnerabilities
+        self._check_stripe_public_keys(js_content, url)
         self._check_http2_support(url)
         self._check_request_url_override(url)
         self._check_cookie_domain_scoping(response, url)
@@ -980,37 +982,6 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                 category="TLS/SSL Configuration",
                 owasp="A02:2021 - Cryptographic Failures",
                 cwe=["CWE-295"],
-            )
-
-    def _check_stripe_public_keys(self, js_content: str):
-        """Detect exposed Stripe publishable keys."""
-        patterns = [
-            r"pk_live_[0-9a-zA-Z]{16,}",
-            r"pk_test_[0-9a-zA-Z]{16,}",
-            r"stripe_public_key_live\"?\s*[:=]\s*\"(pk_[^\"]+)\"",
-        ]
-
-        matches = set()
-        for pattern in patterns:
-            for match in re.findall(pattern, js_content, re.IGNORECASE):
-                key = match if isinstance(match, str) else "".join(match)
-                if key:
-                    matches.add(key)
-
-        for key in sorted(matches):
-            severity = "Medium" if key.startswith("pk_test_") else "High"
-            self.add_enriched_vulnerability(
-                "Stripe Public Key Exposure",
-                severity,
-                "Stripe publishable key exposed in client-side JavaScript.",
-                key,
-                "Remove hardcoded payment keys from client-side code. Load publishable keys from secure configuration and monitor for misuse.",
-                category="Information Disclosure",
-                owasp="A02:2021 - Cryptographic Failures",
-                cwe=["CWE-200"],
-                background="Publishable payment keys should be scoped and monitored. Exposure can indicate weak secret management practices.",
-                impact="Attackers can abuse exposed keys to enumerate payment configuration or mount phishing attacks.",
-                references=["https://stripe.com/docs/keys"],
             )
 
     def _check_dom_open_redirect(self, js_content: str, url: str):

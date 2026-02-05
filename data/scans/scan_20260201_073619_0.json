@@ -1,0 +1,584 @@
+{
+  "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+  "timestamp": "2026-02-01T07:36:19.217270",
+  "platform_type": "bubble",
+  "vulnerabilities": [
+    {
+      "type": "Potential Secret in JavaScript",
+      "severity": "High",
+      "description": "Potential secret found in JavaScript: 1769920540...",
+      "evidence": "1769920540502x490793",
+      "recommendation": "Remove secrets from client-side code",
+      "confidence": "Certain",
+      "category": "Secret Management",
+      "owasp": "A02:2021 - Cryptographic Failures",
+      "cwe": [
+        "CWE-798"
+      ],
+      "parameter": "1769920540502x490793052529101760",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-02-01T07:36:19.970763",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive\nCookie: amqmalawadhi-85850_test_u2main=bus|1769920540502x490793052529101760|1769920540519x386733327520549800; amqmalawadhi-85850_test_u2main.sig=KZKnxAIXeX-fyhuADyTjvaoHDXI; amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; amqmalawadhi-85850_live_u2main=bus|1769920543482x378639683321441150|1769920543576x588525339068697300; amqmalawadhi-85850_live_u2main.sig=hGIIFCW0KSrnCbLuRi6C3NxFrsE; amqmalawadhi-85850_u1main=1769920543482x378639683321441150; __cf_bm=hrwdCulqxA3mKEq0Burh04uswZIDfEg1UbxZ3s9iB5k-1769920540-1.0.1.1-6jDag7JfIyPEx3HNMrprAyEVCXzVYbjnZ7c6f56N08OkPrvhhfzgzyzznjPcMj2sZ_QEirSa1uA2he_Ys2iW5xJVMipIygjaO1C4Ef0WTmo",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:36:19 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; path=/; secure\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":65.5,\"percents\":{\"top\":{\"bubble_cpu\":40.3,\"block\":58.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.8},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":52.8,\"appserver_cache_misses_time\":0,\"redis\":22.6,\"fiber_queue\":4.9,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":55,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":18,\"fiber_queue\":98,\"blocks\":97},\"misc\":{\"userdb_results\":0,\"userdb_data\":0,\"spent_time\":3959359}}\nx-bubble-capacity-used: 0.061 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6ebf43a83fa630-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "1769920540502x490793"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": true,
+        "confidence": "firm",
+        "method": "pattern_analysis",
+        "evidence": "Secret \"1769920540...\" matches suspicious pattern",
+        "verification_details": {
+          "secret": "1769920540...",
+          "secret_type": "api_key",
+          "analysis": {
+            "is_suspicious": true,
+            "confidence": "firm",
+            "type": "api_key"
+          }
+        }
+      }
+    },
+    {
+      "type": "Potential Secret in JavaScript",
+      "severity": "High",
+      "description": "Potential secret found in JavaScript: 1769920540...",
+      "evidence": "1769920540502x490793",
+      "recommendation": "Remove secrets from client-side code",
+      "confidence": "Certain",
+      "category": "Secret Management",
+      "owasp": "A02:2021 - Cryptographic Failures",
+      "cwe": [
+        "CWE-798"
+      ],
+      "parameter": "1769920540502x490793052529101760",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-02-01T07:36:19.972429",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive\nCookie: amqmalawadhi-85850_test_u2main=bus|1769920540502x490793052529101760|1769920540519x386733327520549800; amqmalawadhi-85850_test_u2main.sig=KZKnxAIXeX-fyhuADyTjvaoHDXI; amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; amqmalawadhi-85850_live_u2main=bus|1769920543482x378639683321441150|1769920543576x588525339068697300; amqmalawadhi-85850_live_u2main.sig=hGIIFCW0KSrnCbLuRi6C3NxFrsE; amqmalawadhi-85850_u1main=1769920543482x378639683321441150; __cf_bm=hrwdCulqxA3mKEq0Burh04uswZIDfEg1UbxZ3s9iB5k-1769920540-1.0.1.1-6jDag7JfIyPEx3HNMrprAyEVCXzVYbjnZ7c6f56N08OkPrvhhfzgzyzznjPcMj2sZ_QEirSa1uA2he_Ys2iW5xJVMipIygjaO1C4Ef0WTmo",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:36:19 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; path=/; secure\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":65.5,\"percents\":{\"top\":{\"bubble_cpu\":40.3,\"block\":58.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.8},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":52.8,\"appserver_cache_misses_time\":0,\"redis\":22.6,\"fiber_queue\":4.9,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":55,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":18,\"fiber_queue\":98,\"blocks\":97},\"misc\":{\"userdb_results\":0,\"userdb_data\":0,\"spent_time\":3959359}}\nx-bubble-capacity-used: 0.061 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6ebf43a83fa630-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "1769920540502x490793"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": true,
+        "confidence": "firm",
+        "method": "pattern_analysis",
+        "evidence": "Secret \"1769920540...\" matches suspicious pattern",
+        "verification_details": {
+          "secret": "1769920540...",
+          "secret_type": "api_key",
+          "analysis": {
+            "is_suspicious": true,
+            "confidence": "firm",
+            "type": "api_key"
+          }
+        }
+      }
+    },
+    {
+      "type": "Insecure Cookie (Missing Secure Flag)",
+      "severity": "Medium",
+      "description": "Cookie 'amqmalawadhi-85850_u1_testmain' lacks Secure flag",
+      "evidence": "amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; path=/; secure",
+      "recommendation": "Set the 'Secure' flag for all cookies to ensure they are only transmitted over HTTPS.",
+      "confidence": "Firm",
+      "category": "Session Management",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-614"
+      ],
+      "parameter": "",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-02-01T07:36:19.973543",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive\nCookie: amqmalawadhi-85850_test_u2main=bus|1769920540502x490793052529101760|1769920540519x386733327520549800; amqmalawadhi-85850_test_u2main.sig=KZKnxAIXeX-fyhuADyTjvaoHDXI; amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; amqmalawadhi-85850_live_u2main=bus|1769920543482x378639683321441150|1769920543576x588525339068697300; amqmalawadhi-85850_live_u2main.sig=hGIIFCW0KSrnCbLuRi6C3NxFrsE; amqmalawadhi-85850_u1main=1769920543482x378639683321441150; __cf_bm=hrwdCulqxA3mKEq0Burh04uswZIDfEg1UbxZ3s9iB5k-1769920540-1.0.1.1-6jDag7JfIyPEx3HNMrprAyEVCXzVYbjnZ7c6f56N08OkPrvhhfzgzyzznjPcMj2sZ_QEirSa1uA2he_Ys2iW5xJVMipIygjaO1C4Ef0WTmo",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:36:19 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; path=/; secure\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":65.5,\"percents\":{\"top\":{\"bubble_cpu\":40.3,\"block\":58.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.8},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":52.8,\"appserver_cache_misses_time\":0,\"redis\":22.6,\"fiber_queue\":4.9,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":55,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":18,\"fiber_queue\":98,\"blocks\":97},\"misc\":{\"userdb_results\":0,\"userdb_data\":0,\"spent_time\":3959359}}\nx-bubble-capacity-used: 0.061 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6ebf43a83fa630-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; path=/; secure"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: insecure cookie (missing secure flag)",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Cookie without HttpOnly Flag",
+      "severity": "Low",
+      "description": "Cookie 'amqmalawadhi-85850_u1_testmain' lacks HttpOnly flag",
+      "evidence": "amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; path=/; secure",
+      "recommendation": "Set the 'HttpOnly' flag for all cookies to prevent them from being accessed by client-side scripts.",
+      "confidence": "Firm",
+      "category": "Session Management",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-1004"
+      ],
+      "parameter": "",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-02-01T07:36:19.974280",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive\nCookie: amqmalawadhi-85850_test_u2main=bus|1769920540502x490793052529101760|1769920540519x386733327520549800; amqmalawadhi-85850_test_u2main.sig=KZKnxAIXeX-fyhuADyTjvaoHDXI; amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; amqmalawadhi-85850_live_u2main=bus|1769920543482x378639683321441150|1769920543576x588525339068697300; amqmalawadhi-85850_live_u2main.sig=hGIIFCW0KSrnCbLuRi6C3NxFrsE; amqmalawadhi-85850_u1main=1769920543482x378639683321441150; __cf_bm=hrwdCulqxA3mKEq0Burh04uswZIDfEg1UbxZ3s9iB5k-1769920540-1.0.1.1-6jDag7JfIyPEx3HNMrprAyEVCXzVYbjnZ7c6f56N08OkPrvhhfzgzyzznjPcMj2sZ_QEirSa1uA2he_Ys2iW5xJVMipIygjaO1C4Ef0WTmo",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:36:19 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; path=/; secure\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":65.5,\"percents\":{\"top\":{\"bubble_cpu\":40.3,\"block\":58.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.8},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":52.8,\"appserver_cache_misses_time\":0,\"redis\":22.6,\"fiber_queue\":4.9,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":55,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":18,\"fiber_queue\":98,\"blocks\":97},\"misc\":{\"userdb_results\":0,\"userdb_data\":0,\"spent_time\":3959359}}\nx-bubble-capacity-used: 0.061 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6ebf43a83fa630-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; path=/; secure"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: cookie without httponly flag",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Cookie without SameSite Attribute",
+      "severity": "Low",
+      "description": "Cookie 'amqmalawadhi-85850_u1_testmain' lacks SameSite attribute",
+      "evidence": "amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; path=/; secure",
+      "recommendation": "Set the 'SameSite' attribute (Lax or Strict) for all cookies to protect against CSRF attacks.",
+      "confidence": "Firm",
+      "category": "Session Management",
+      "owasp": "A01:2021 - Broken Access Control",
+      "cwe": [
+        "CWE-1275"
+      ],
+      "parameter": "",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-02-01T07:36:19.974903",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive\nCookie: amqmalawadhi-85850_test_u2main=bus|1769920540502x490793052529101760|1769920540519x386733327520549800; amqmalawadhi-85850_test_u2main.sig=KZKnxAIXeX-fyhuADyTjvaoHDXI; amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; amqmalawadhi-85850_live_u2main=bus|1769920543482x378639683321441150|1769920543576x588525339068697300; amqmalawadhi-85850_live_u2main.sig=hGIIFCW0KSrnCbLuRi6C3NxFrsE; amqmalawadhi-85850_u1main=1769920543482x378639683321441150; __cf_bm=hrwdCulqxA3mKEq0Burh04uswZIDfEg1UbxZ3s9iB5k-1769920540-1.0.1.1-6jDag7JfIyPEx3HNMrprAyEVCXzVYbjnZ7c6f56N08OkPrvhhfzgzyzznjPcMj2sZ_QEirSa1uA2he_Ys2iW5xJVMipIygjaO1C4Ef0WTmo",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:36:19 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; path=/; secure\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":65.5,\"percents\":{\"top\":{\"bubble_cpu\":40.3,\"block\":58.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.8},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":52.8,\"appserver_cache_misses_time\":0,\"redis\":22.6,\"fiber_queue\":4.9,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":55,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":18,\"fiber_queue\":98,\"blocks\":97},\"misc\":{\"userdb_results\":0,\"userdb_data\":0,\"spent_time\":3959359}}\nx-bubble-capacity-used: 0.061 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6ebf43a83fa630-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; path=/; secure"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: cookie without samesite attribute",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Missing AJAX Security Headers",
+      "severity": "Low",
+      "description": "AJAX requests may lack security headers",
+      "evidence": "",
+      "recommendation": "Implement proper AJAX security headers",
+      "confidence": "Firm",
+      "category": "Cross-Site Scripting",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-1007"
+      ],
+      "parameter": "",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-02-01T07:36:19.978625",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive\nCookie: amqmalawadhi-85850_test_u2main=bus|1769920540502x490793052529101760|1769920540519x386733327520549800; amqmalawadhi-85850_test_u2main.sig=KZKnxAIXeX-fyhuADyTjvaoHDXI; amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; amqmalawadhi-85850_live_u2main=bus|1769920543482x378639683321441150|1769920543576x588525339068697300; amqmalawadhi-85850_live_u2main.sig=hGIIFCW0KSrnCbLuRi6C3NxFrsE; amqmalawadhi-85850_u1main=1769920543482x378639683321441150; __cf_bm=hrwdCulqxA3mKEq0Burh04uswZIDfEg1UbxZ3s9iB5k-1769920540-1.0.1.1-6jDag7JfIyPEx3HNMrprAyEVCXzVYbjnZ7c6f56N08OkPrvhhfzgzyzznjPcMj2sZ_QEirSa1uA2he_Ys2iW5xJVMipIygjaO1C4Ef0WTmo",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:36:19 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; path=/; secure\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":65.5,\"percents\":{\"top\":{\"bubble_cpu\":40.3,\"block\":58.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.8},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":52.8,\"appserver_cache_misses_time\":0,\"redis\":22.6,\"fiber_queue\":4.9,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":55,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":18,\"fiber_queue\":98,\"blocks\":97},\"misc\":{\"userdb_results\":0,\"userdb_data\":0,\"spent_time\":3959359}}\nx-bubble-capacity-used: 0.061 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6ebf43a83fa630-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: missing ajax security headers",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Exposed Sensitive Endpoint",
+      "severity": "Low",
+      "description": "Potentially sensitive endpoint exposed: \"https://amqmalawadhi-85850.bubbleapps.io/version-test/api/1.1/init/data?location=\"",
+      "evidence": "\"https://amqmalawadhi-85850.bubbleapps.io/version-test/api/1.1/init/data?location=\"",
+      "recommendation": "Review exposed endpoints and implement proper access controls",
+      "confidence": "Firm",
+      "category": "Information Disclosure",
+      "owasp": "A01:2021 - Broken Access Control",
+      "cwe": [
+        "CWE-200"
+      ],
+      "parameter": "",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-02-01T07:36:19.979110",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive\nCookie: amqmalawadhi-85850_test_u2main=bus|1769920540502x490793052529101760|1769920540519x386733327520549800; amqmalawadhi-85850_test_u2main.sig=KZKnxAIXeX-fyhuADyTjvaoHDXI; amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; amqmalawadhi-85850_live_u2main=bus|1769920543482x378639683321441150|1769920543576x588525339068697300; amqmalawadhi-85850_live_u2main.sig=hGIIFCW0KSrnCbLuRi6C3NxFrsE; amqmalawadhi-85850_u1main=1769920543482x378639683321441150; __cf_bm=hrwdCulqxA3mKEq0Burh04uswZIDfEg1UbxZ3s9iB5k-1769920540-1.0.1.1-6jDag7JfIyPEx3HNMrprAyEVCXzVYbjnZ7c6f56N08OkPrvhhfzgzyzznjPcMj2sZ_QEirSa1uA2he_Ys2iW5xJVMipIygjaO1C4Ef0WTmo",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:36:19 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; path=/; secure\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":65.5,\"percents\":{\"top\":{\"bubble_cpu\":40.3,\"block\":58.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.8},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":52.8,\"appserver_cache_misses_time\":0,\"redis\":22.6,\"fiber_queue\":4.9,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":55,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":18,\"fiber_queue\":98,\"blocks\":97},\"misc\":{\"userdb_results\":0,\"userdb_data\":0,\"spent_time\":3959359}}\nx-bubble-capacity-used: 0.061 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6ebf43a83fa630-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "\"https://amqmalawadhi-85850.bubbleapps.io/version-test/api/1.1/init/data?location=\""
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: exposed sensitive endpoint",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Missing Permissions-Policy Header",
+      "severity": "Info",
+      "description": "The Permissions-Policy security header is missing",
+      "evidence": "",
+      "recommendation": "Implement the Permissions-Policy header to enhance security.",
+      "confidence": "Firm",
+      "category": "Security Headers",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-16"
+      ],
+      "parameter": "",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-02-01T07:36:20.106936",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive\nCookie: amqmalawadhi-85850_test_u2main=bus|1769920540502x490793052529101760|1769920540519x386733327520549800; amqmalawadhi-85850_test_u2main.sig=KZKnxAIXeX-fyhuADyTjvaoHDXI; amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; amqmalawadhi-85850_live_u2main=bus|1769920543482x378639683321441150|1769920543576x588525339068697300; amqmalawadhi-85850_live_u2main.sig=hGIIFCW0KSrnCbLuRi6C3NxFrsE; amqmalawadhi-85850_u1main=1769920543482x378639683321441150; __cf_bm=hrwdCulqxA3mKEq0Burh04uswZIDfEg1UbxZ3s9iB5k-1769920540-1.0.1.1-6jDag7JfIyPEx3HNMrprAyEVCXzVYbjnZ7c6f56N08OkPrvhhfzgzyzznjPcMj2sZ_QEirSa1uA2he_Ys2iW5xJVMipIygjaO1C4Ef0WTmo",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:36:19 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; path=/; secure\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":65.5,\"percents\":{\"top\":{\"bubble_cpu\":40.3,\"block\":58.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.8},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":52.8,\"appserver_cache_misses_time\":0,\"redis\":22.6,\"fiber_queue\":4.9,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":55,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":18,\"fiber_queue\":98,\"blocks\":97},\"misc\":{\"userdb_results\":0,\"userdb_data\":0,\"spent_time\":3959359}}\nx-bubble-capacity-used: 0.061 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6ebf43a83fa630-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: missing permissions-policy header",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Missing X-Permitted-Cross-Domain-Policies Header",
+      "severity": "Info",
+      "description": "The X-Permitted-Cross-Domain-Policies security header is missing",
+      "evidence": "",
+      "recommendation": "Implement the X-Permitted-Cross-Domain-Policies header to enhance security.",
+      "confidence": "Firm",
+      "category": "Security Headers",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-16"
+      ],
+      "parameter": "",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-02-01T07:36:20.108460",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive\nCookie: amqmalawadhi-85850_test_u2main=bus|1769920540502x490793052529101760|1769920540519x386733327520549800; amqmalawadhi-85850_test_u2main.sig=KZKnxAIXeX-fyhuADyTjvaoHDXI; amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; amqmalawadhi-85850_live_u2main=bus|1769920543482x378639683321441150|1769920543576x588525339068697300; amqmalawadhi-85850_live_u2main.sig=hGIIFCW0KSrnCbLuRi6C3NxFrsE; amqmalawadhi-85850_u1main=1769920543482x378639683321441150; __cf_bm=hrwdCulqxA3mKEq0Burh04uswZIDfEg1UbxZ3s9iB5k-1769920540-1.0.1.1-6jDag7JfIyPEx3HNMrprAyEVCXzVYbjnZ7c6f56N08OkPrvhhfzgzyzznjPcMj2sZ_QEirSa1uA2he_Ys2iW5xJVMipIygjaO1C4Ef0WTmo",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:36:19 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; path=/; secure\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":65.5,\"percents\":{\"top\":{\"bubble_cpu\":40.3,\"block\":58.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.8},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":52.8,\"appserver_cache_misses_time\":0,\"redis\":22.6,\"fiber_queue\":4.9,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":55,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":18,\"fiber_queue\":98,\"blocks\":97},\"misc\":{\"userdb_results\":0,\"userdb_data\":0,\"spent_time\":3959359}}\nx-bubble-capacity-used: 0.061 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6ebf43a83fa630-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: missing x-permitted-cross-domain-policies header",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Hidden HTTP/2",
+      "severity": "Info",
+      "description": "Origin advertises HTTP/2 (h2) via ALPN; ensure HTTP/2-specific hardening (HPACK/DoS controls, reverse-proxy config).",
+      "evidence": "ALPN negotiated: h2",
+      "recommendation": "Review HTTP/2 configuration at the edge (WAF/CDN/proxy), apply rate limits, and keep TLS stack updated.",
+      "confidence": "Firm",
+      "category": "Protocol Security",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-16"
+      ],
+      "parameter": "",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-02-01T07:36:20.666841",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive\nCookie: amqmalawadhi-85850_test_u2main=bus|1769920540502x490793052529101760|1769920540519x386733327520549800; amqmalawadhi-85850_test_u2main.sig=KZKnxAIXeX-fyhuADyTjvaoHDXI; amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; amqmalawadhi-85850_live_u2main=bus|1769920543482x378639683321441150|1769920543576x588525339068697300; amqmalawadhi-85850_live_u2main.sig=hGIIFCW0KSrnCbLuRi6C3NxFrsE; amqmalawadhi-85850_u1main=1769920543482x378639683321441150; __cf_bm=hrwdCulqxA3mKEq0Burh04uswZIDfEg1UbxZ3s9iB5k-1769920540-1.0.1.1-6jDag7JfIyPEx3HNMrprAyEVCXzVYbjnZ7c6f56N08OkPrvhhfzgzyzznjPcMj2sZ_QEirSa1uA2he_Ys2iW5xJVMipIygjaO1C4Ef0WTmo",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:36:19 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; path=/; secure\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":65.5,\"percents\":{\"top\":{\"bubble_cpu\":40.3,\"block\":58.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.8},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":52.8,\"appserver_cache_misses_time\":0,\"redis\":22.6,\"fiber_queue\":4.9,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":55,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":18,\"fiber_queue\":98,\"blocks\":97},\"misc\":{\"userdb_results\":0,\"userdb_data\":0,\"spent_time\":3959359}}\nx-bubble-capacity-used: 0.061 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6ebf43a83fa630-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "ALPN negotiated: h2"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: hidden http/2",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "DOM Data Manipulation (DOM-based)",
+      "severity": "Medium",
+      "description": "Client-side code contains DOM sources and dangerous sinks which may indicate DOM-based XSS/data manipulation risk.",
+      "evidence": "Sources=1 Sinks=1",
+      "recommendation": "Avoid assigning URL-derived data into HTML sinks; use safe DOM APIs and output encoding.",
+      "confidence": "Firm",
+      "category": "Cross-Site Scripting",
+      "owasp": "A03:2021 - Injection",
+      "cwe": [
+        "CWE-79"
+      ],
+      "parameter": "",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-02-01T07:36:29.779328",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive\nCookie: amqmalawadhi-85850_test_u2main=bus|1769920540502x490793052529101760|1769920540519x386733327520549800; amqmalawadhi-85850_test_u2main.sig=KZKnxAIXeX-fyhuADyTjvaoHDXI; amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; amqmalawadhi-85850_live_u2main=bus|1769920543482x378639683321441150|1769920543576x588525339068697300; amqmalawadhi-85850_live_u2main.sig=hGIIFCW0KSrnCbLuRi6C3NxFrsE; amqmalawadhi-85850_u1main=1769920543482x378639683321441150; __cf_bm=hrwdCulqxA3mKEq0Burh04uswZIDfEg1UbxZ3s9iB5k-1769920540-1.0.1.1-6jDag7JfIyPEx3HNMrprAyEVCXzVYbjnZ7c6f56N08OkPrvhhfzgzyzznjPcMj2sZ_QEirSa1uA2he_Ys2iW5xJVMipIygjaO1C4Ef0WTmo",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:36:19 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; path=/; secure\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":65.5,\"percents\":{\"top\":{\"bubble_cpu\":40.3,\"block\":58.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.8},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":52.8,\"appserver_cache_misses_time\":0,\"redis\":22.6,\"fiber_queue\":4.9,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":55,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":18,\"fiber_queue\":98,\"blocks\":97},\"misc\":{\"userdb_results\":0,\"userdb_data\":0,\"spent_time\":3959359}}\nx-bubble-capacity-used: 0.061 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6ebf43a83fa630-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "Sources=1 Sinks=1"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: dom data manipulation (dom-based)",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Cloud Resource / AWS Key Exposure",
+      "severity": "Medium",
+      "description": "Potential cloud resource identifiers or AWS credentials found in client-accessible content.",
+      "evidence": "CloudFront domain: d3dqmih97rcqmh.cloudfront.net; CloudFront domain: d1muf25xaso8hp.cloudfront.net; CloudFront domain: d3dqmih97rcqmh.cloudfront.net; CloudFront domain: d1muf25xaso8hp.cloudfront.net",
+      "recommendation": "Remove credentials from client-side code, rotate exposed keys immediately, and use short-lived credentials via server-side token exchange.",
+      "confidence": "Firm",
+      "category": "Secret Management",
+      "owasp": "A02:2021 - Cryptographic Failures",
+      "cwe": [
+        "CWE-798",
+        "CWE-200"
+      ],
+      "parameter": "",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-02-01T07:36:29.787385",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive\nCookie: amqmalawadhi-85850_test_u2main=bus|1769920540502x490793052529101760|1769920540519x386733327520549800; amqmalawadhi-85850_test_u2main.sig=KZKnxAIXeX-fyhuADyTjvaoHDXI; amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; amqmalawadhi-85850_live_u2main=bus|1769920543482x378639683321441150|1769920543576x588525339068697300; amqmalawadhi-85850_live_u2main.sig=hGIIFCW0KSrnCbLuRi6C3NxFrsE; amqmalawadhi-85850_u1main=1769920543482x378639683321441150; __cf_bm=hrwdCulqxA3mKEq0Burh04uswZIDfEg1UbxZ3s9iB5k-1769920540-1.0.1.1-6jDag7JfIyPEx3HNMrprAyEVCXzVYbjnZ7c6f56N08OkPrvhhfzgzyzznjPcMj2sZ_QEirSa1uA2he_Ys2iW5xJVMipIygjaO1C4Ef0WTmo",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:36:19 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; path=/; secure\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":65.5,\"percents\":{\"top\":{\"bubble_cpu\":40.3,\"block\":58.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.8},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":52.8,\"appserver_cache_misses_time\":0,\"redis\":22.6,\"fiber_queue\":4.9,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":55,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":18,\"fiber_queue\":98,\"blocks\":97},\"misc\":{\"userdb_results\":0,\"userdb_data\":0,\"spent_time\":3959359}}\nx-bubble-capacity-used: 0.061 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6ebf43a83fa630-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "CloudFront domain: d3dqmih97rcqmh.cloudfront.net; CloudFront domain: d1muf25xaso8hp.cloudfront.net; CloudFront domain: d3dqmih97rcqmh.cloudfront.net; CloudFront domain: d1muf25xaso8hp.cloudfront.net"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: cloud resource / aws key exposure",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "DOM-based Cross-Site Scripting (XSS)",
+      "severity": "High",
+      "description": "DOM-based Cross-Site Scripting (XSS) detected via DOM manipulation",
+      "evidence": "Source: document\\.location, Sink: \\.innerHTML\\s*=",
+      "recommendation": "Avoid using dangerous DOM sinks with user-controlled data; use safe DOM APIs and validate input",
+      "confidence": "Firm",
+      "category": "Cross-Site Scripting",
+      "owasp": "A03:2021 - Injection",
+      "cwe": [
+        "CWE-79"
+      ],
+      "parameter": "",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-02-01T07:36:30.211823",
+      "background": "DOM-based XSS vulnerabilities occur when the DOM is modified in an unsafe way using untrusted data from sources like location.hash or document.URL.",
+      "impact": "DOM-based XSS is particularly dangerous as it bypasses server-side protections. Attackers can execute arbitrary JavaScript in the victim's browser context.",
+      "references": [
+        "https://owasp.org/www-community/attacks/DOM_Based_XSS",
+        "https://portswigger.net/web-security/cross-site-scripting/dom-based"
+      ],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive\nCookie: amqmalawadhi-85850_test_u2main=bus|1769920540502x490793052529101760|1769920540519x386733327520549800; amqmalawadhi-85850_test_u2main.sig=KZKnxAIXeX-fyhuADyTjvaoHDXI; amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; amqmalawadhi-85850_live_u2main=bus|1769920543482x378639683321441150|1769920543576x588525339068697300; amqmalawadhi-85850_live_u2main.sig=hGIIFCW0KSrnCbLuRi6C3NxFrsE; amqmalawadhi-85850_u1main=1769920543482x378639683321441150; __cf_bm=hrwdCulqxA3mKEq0Burh04uswZIDfEg1UbxZ3s9iB5k-1769920540-1.0.1.1-6jDag7JfIyPEx3HNMrprAyEVCXzVYbjnZ7c6f56N08OkPrvhhfzgzyzznjPcMj2sZ_QEirSa1uA2he_Ys2iW5xJVMipIygjaO1C4Ef0WTmo",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:36:19 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_u1_testmain=1769920540502x490793052529101760; path=/; secure\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":65.5,\"percents\":{\"top\":{\"bubble_cpu\":40.3,\"block\":58.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.8},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":52.8,\"appserver_cache_misses_time\":0,\"redis\":22.6,\"fiber_queue\":4.9,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":55,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":18,\"fiber_queue\":98,\"blocks\":97},\"misc\":{\"userdb_results\":0,\"userdb_data\":0,\"spent_time\":3959359}}\nx-bubble-capacity-used: 0.061 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6ebf43a83fa630-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "Source: document\\.location, Sink: \\.innerHTML\\s*="
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "reason": "Missing URL or parameter"
+      }
+    },
+    {
+      "type": "Inline JavaScript",
+      "severity": "Low",
+      "description": "Found 27 inline script blocks (potential CSP issues)"
+    }
+  ],
+  "security_headers": {
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "Missing",
+    "X-Content-Type-Options": "nosniff",
+    "Strict-Transport-Security": "max-age=31536000",
+    "Content-Security-Policy": "frame-ancestors 'none';",
+    "Referrer-Policy": "origin",
+    "Permissions-Policy": "Missing",
+    "X-Permitted-Cross-Domain-Policies": "Missing",
+    "security_score": "5/8"
+  },
+  "ssl_analysis": {
+    "version": "TLSv1.3",
+    "cipher": [
+      "TLS_AES_256_GCM_SHA384",
+      "TLSv1.3",
+      256
+    ],
+    "certificate_subject": [],
+    "certificate_issuer": [],
+    "certificate_expiry": "Unknown",
+    "certificate_san": []
+  },
+  "information_disclosure": [],
+  "authentication_issues": [],
+  "authorization_issues": [],
+  "data_exposure": [],
+  "api_endpoints": [],
+  "forms_analysis": [],
+  "recommendations": [
+    {
+      "category": "Security Headers",
+      "priority": "High",
+      "description": "Implement missing security headers: X-XSS-Protection, Permissions-Policy, X-Permitted-Cross-Domain-Policies"
+    },
+    {
+      "category": "Bubble Security",
+      "priority": "High",
+      "description": "Review privacy rules for exposed workflow APIs"
+    }
+  ],
+  "status_code": 200,
+  "response_time": 0.43284,
+  "bubble_specific": {
+    "api_endpoints_found": [
+      "1.1/init/data?location="
+    ],
+    "workflow_exposure": [
+      "1769920540502x490793052529101760",
+      "The variable ",
+      "test",
+      "is_skeleton",
+      "error",
+      "error",
+      "pre_early_js",
+      "post_early_js",
+      "google",
+      "GET",
+      "AIzaSyAlT1MzDJL1hTzjgn_-PbAD3NQEIKjcJi4",
+      "1769920579346x815",
+      "hnm1QbhkSiDNm5/cKrs8mmrfn/2Ipcbe+kt10RKPJhc=",
+      "{",
+      ":false}",
+      "index",
+      "pre_run_js",
+      "post_run_js",
+      "pre_static_js",
+      "post_static_js",
+      "pre_dynamic_js",
+      "post_dynamic_js",
+      "DOMContentLoaded",
+      "error-card",
+      "style",
+      "div",
+      "POST",
+      "DOMContentLoaded",
+      "error-card",
+      "style",
+      "div",
+      "] = Date.now();\n\n\nif (!window._bubble_page_load_data) {\n  window._bubble_page_load_data = {}\n}\nif (!window._bubble_page_load_data.js_execution_timings) {\n  window._bubble_page_load_data.js_execution_timings = {}\n}\nwindow._bubble_page_load_data.js_execution_timings[",
+      "] = Date.now();\n\n\nif (!window._bubble_page_load_data) {\n  window._bubble_page_load_data = {}\n}\nif (!window._bubble_page_load_data.js_execution_timings) {\n  window._bubble_page_load_data.js_execution_timings = {}\n}\nwindow._bubble_page_load_data.js_execution_timings["
+    ],
+    "database_exposure": [
+      "pre_early_js",
+      "post_early_js",
+      "GET",
+      " + encodeURIComponent(window.location.href), true);\nxhr.send();\n})();\n\nwindow.gm_key = ",
+      "pre_run_js",
+      "post_run_js",
+      "pre_static_js",
+      "post_static_js",
+      "pre_dynamic_js",
+      "post_dynamic_js",
+      "DOMContentLoaded"
+    ],
+    "privacy_rules": []
+  },
+  "verification_summary": {
+    "total_vulnerabilities": 13,
+    "verified_vulnerabilities": 2,
+    "high_confidence_verifications": 2,
+    "verification_rate": 15.38
+  }
+}

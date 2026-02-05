@@ -19,6 +19,7 @@ import ssl
 import time
 import warnings
 from datetime import datetime
+from typing import List, Dict, Any
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -34,20 +35,38 @@ from .analyzers import (
 )
 from .report_generator import ProfessionalReportGenerator
 from .result_transformer import transform_results_for_professional_report
-
-# Suppress SSL warnings for testing
-warnings.filterwarnings("ignore", message="Unverified HTTPS request")
+from .utils.platform_detector import AdvancedPlatformDetector
+from .models.vulnerability import EnhancedVulnerability, ScanResult
+from .plugins.plugin_manager import PluginManager
+from .utils.parallel_scanner import ParallelScanner, create_parallel_scan
 
 
 class LowCodeSecurityScanner:
-    def __init__(self):
+    def __init__(self, enable_plugins: bool = True, enable_parallel: bool = True, verify_ssl: bool = True):
         self.session = requests.Session()
         self.session.headers.update(
             {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             }
         )
+        # Configure SSL verification
+        self.verify_ssl = verify_ssl
+        if not verify_ssl:
+            # Only suppress warnings for testing scenarios
+            warnings.filterwarnings("ignore", message="Unverified HTTPS request")
+        
         self.results = {}
+        self.platform_detector = AdvancedPlatformDetector(self.session)
+        
+        # Advanced features
+        self.enable_plugins = enable_plugins
+        self.enable_parallel = enable_parallel
+        
+        if enable_plugins:
+            self.plugin_manager = PluginManager()
+        
+        if enable_parallel:
+            self.parallel_scanner = ParallelScanner()
 
     def scan_target(self, url):
         """Main scanning function for a target URL"""
@@ -71,7 +90,7 @@ class LowCodeSecurityScanner:
 
         try:
             # Basic connectivity and platform identification
-            response = self.session.get(url, timeout=10, verify=False)
+            response = self.session.get(url, timeout=10, verify=self.verify_ssl)
             target_results["status_code"] = response.status_code
             target_results["response_time"] = response.elapsed.total_seconds()
 
@@ -109,18 +128,163 @@ class LowCodeSecurityScanner:
 
         return target_results
 
-    def identify_platform(self, url):
-        """Identify the low-code platform based on URL and response"""
-        domain = urlparse(url).netloc.lower()
+    def enhanced_scan_target(self, url: str, use_plugins: bool = None, use_parallel: bool = None) -> ScanResult:
+        """
+        Enhanced scanning with plugins and parallel processing.
+        
+        Args:
+            url: Target URL
+            use_plugins: Whether to use plugins (default: instance setting)
+            use_parallel: Whether to use parallel processing (default: instance setting)
+            
+        Returns:
+            Enhanced scan result
+        """
+        use_plugins = use_plugins if use_plugins is not None else self.enable_plugins
+        use_parallel = use_parallel if use_parallel is not None else self.enable_parallel
+        
+        print(f"\n[+] Starting enhanced security scan for: {url}")
+        print(f"[+] Plugins: {'Enabled' if use_plugins else 'Disabled'}")
+        print(f"[+] Parallel: {'Enabled' if use_parallel else 'Disabled'}")
+        
+        # Perform basic scan first
+        basic_results = self.scan_target(url)
+        
+        # Convert to enhanced vulnerabilities
+        enhanced_vulnerabilities = []
+        for vuln in basic_results.get('vulnerabilities', []):
+            enhanced_vuln = EnhancedVulnerability.from_basic_vulnerability(
+                vuln, basic_results.get('platform_type', 'Unknown')
+            )
+            enhanced_vulnerabilities.append(enhanced_vuln)
+        
+        # Execute plugins if enabled
+        plugin_results = {}
+        if use_plugins and hasattr(self, 'plugin_manager'):
+            print("[+] Executing plugins...")
+            plugin_results = self.plugin_manager.execute_all_plugins(url, basic_results)
+        
+        # Create enhanced scan result
+        scan_result = ScanResult(
+            scan_id=f"enhanced_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            url=url,
+            platform=basic_results.get('platform_type', 'Unknown'),
+            timestamp=datetime.now().isoformat(),
+            vulnerability_findings=enhanced_vulnerabilities,
+            security_assessment={
+                'risk_score': self._calculate_risk_score(enhanced_vulnerabilities),
+                'severity_counts': self._get_severity_counts(enhanced_vulnerabilities),
+                'platform_risks': self._assess_platform_risks(basic_results.get('platform_type', 'Unknown'))
+            },
+            compliance_summary=self._generate_compliance_summary(enhanced_vulnerabilities),
+            scan_metadata={
+                'scan_type': 'enhanced',
+                'plugins_used': use_plugins,
+                'parallel_used': use_parallel,
+                'plugin_count': len(plugin_results) if plugin_results else 0
+            },
+            performance_metrics={
+                'scan_duration': 0,  # Would be calculated in real implementation
+                'vulnerability_count': len(enhanced_vulnerabilities),
+                'plugin_results_count': len(plugin_results) if plugin_results else 0
+            }
+        )
+        
+        print(f"[+] Enhanced scan completed. Found {len(enhanced_vulnerabilities)} vulnerabilities")
+        
+        return scan_result
+    
+    def _calculate_risk_score(self, vulnerabilities: List[EnhancedVulnerability]) -> float:
+        """Calculate overall risk score from vulnerabilities."""
+        if not vulnerabilities:
+            return 0.0
+        
+        total_cvss = sum(vuln.cvss_score for vuln in vulnerabilities)
+        return total_cvss / len(vulnerabilities)
+    
+    def _get_severity_counts(self, vulnerabilities: List[EnhancedVulnerability]) -> Dict[str, int]:
+        """Get vulnerability counts by severity."""
+        counts = {'Critical': 0, 'High': 0, 'Medium': 0, 'Low': 0, 'Info': 0}
+        for vuln in vulnerabilities:
+            if vuln.severity in counts:
+                counts[vuln.severity] += 1
+        return counts
+    
+    def _assess_platform_risks(self, platform: str) -> Dict[str, Any]:
+        """Assess platform-specific risks."""
+        platform_risks = {
+            'bubble.io': {
+                'common_issues': ['Workflow exposure', 'Privacy rules bypass', 'API key leakage'],
+                'risk_level': 'Medium'
+            },
+            'outsystems': {
+                'common_issues': ['REST API exposure', 'Screen action bypass', 'Entity leakage'],
+                'risk_level': 'Medium'
+            },
+            'airtable.com': {
+                'common_issues': ['Base ID exposure', 'API key exposure', 'Permission bypass'],
+                'risk_level': 'Low'
+            },
+            'generic': {
+                'common_issues': ['Missing security headers', 'XSS', 'SQL Injection'],
+                'risk_level': 'High'
+            }
+        }
+        
+        return platform_risks.get(platform, {'common_issues': [], 'risk_level': 'Unknown'})
+    
+    def _generate_compliance_summary(self, vulnerabilities: List[EnhancedVulnerability]) -> Dict[str, Any]:
+        """Generate compliance framework summary."""
+        compliance_coverage = {}
+        total_vulns = len(vulnerabilities)
+        
+        frameworks = ['OWASP', 'NIST', 'ISO_27001', 'SOC2', 'PCI_DSS']
+        for framework in frameworks:
+            covered = sum(1 for vuln in vulnerabilities 
+                        if vuln.compliance_mappings.get(framework))
+            compliance_coverage[framework] = {
+                'coverage_percentage': (covered / total_vulns * 100) if total_vulns > 0 else 0,
+                'vulnerabilities_covered': covered,
+                'total_vulnerabilities': total_vulns
+            }
+        
+        return compliance_coverage
 
-        if "bubble" in domain or "bubbleapps.io" in domain:
-            return "bubble"
-        elif "outsystems" in domain:
-            return "outsystems"
-        elif "airtable" in domain:
-            return "airtable"
-        else:
-            return "unknown"
+    def identify_platform(self, url):
+        """Enhanced platform identification using advanced detection"""
+        try:
+            # Use advanced platform detection
+            detection_result = self.platform_detector.detect_platform_advanced(url)
+            
+            if detection_result['detected_platforms'] and detection_result['detected_platforms'][0] != 'unknown':
+                platform = detection_result['detected_platforms'][0]
+                confidence = detection_result['confidence_scores'].get(platform, 0)
+                print(f"[+] Platform detected: {platform} ({confidence}% confidence)")
+                return platform
+            else:
+                # Fallback to basic detection
+                return self._basic_platform_identification(url)
+                
+        except Exception as e:
+            print(f"[!] Platform detection failed: {e}")
+            return self._basic_platform_identification(url)
+    
+    def _basic_platform_identification(self, url):
+        """Fallback basic platform identification"""
+        try:
+            response = self.session.get(url, timeout=10)
+            content = response.text.lower()
+            
+            if 'bubble.io' in content or '_bubble_page_' in content:
+                return 'bubble'
+            elif 'outsystems' in content or 'richwidgets' in content:
+                return 'outsystems'
+            elif 'airtable.com' in content or 'app[a-zA-Z0-9]{15}' in content:
+                return 'airtable'
+            else:
+                return 'generic'
+        except:
+            return 'generic'
 
     def analyze_security_headers(self, headers):
         """Analyze HTTP security headers"""

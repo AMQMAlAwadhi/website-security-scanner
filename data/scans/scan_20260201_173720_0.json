@@ -1,0 +1,252 @@
+{
+  "url": "https://mern-ust-project-2026-2.onrender.com/",
+  "timestamp": "2026-02-01T17:37:24.240380",
+  "platform_type": "generic",
+  "vulnerabilities": [
+    {
+      "id": "d8cf59f8-13a3-4393-832a-38706cdb421a",
+      "type": "Insecure Cookie",
+      "severity": "Medium",
+      "description": "Cookie lacks Secure flag",
+      "platform": "generic",
+      "url": "https://mern-ust-project-2026-2.onrender.com/",
+      "cvss_score": 5.5,
+      "category": "Session Management",
+      "remediation_priority": "Medium",
+      "compliance_mappings": {
+        "OWASP": [],
+        "NIST": [],
+        "ISO_27001": [],
+        "SOC2": [],
+        "PCI_DSS": []
+      },
+      "timestamp": "2026-02-01T17:37:22.905222",
+      "evidence": "",
+      "references": [],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: insecure cookie",
+        "original_confidence": "tentative"
+      }
+    },
+    {
+      "id": "08311438-8d50-41ab-a148-eccd28c629b1",
+      "type": "Cookie Missing HttpOnly",
+      "severity": "Low",
+      "description": "Cookie lacks HttpOnly flag",
+      "platform": "generic",
+      "url": "https://mern-ust-project-2026-2.onrender.com/",
+      "cvss_score": 3.5,
+      "category": "Session Management",
+      "remediation_priority": "Low",
+      "compliance_mappings": {
+        "OWASP": [],
+        "NIST": [],
+        "ISO_27001": [],
+        "SOC2": [],
+        "PCI_DSS": []
+      },
+      "timestamp": "2026-02-01T17:37:22.905616",
+      "evidence": "",
+      "references": [],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: cookie missing httponly",
+        "original_confidence": "tentative"
+      }
+    },
+    {
+      "id": "674803bb-6e91-4b56-b09b-4a8a3721663e",
+      "type": "Missing Content Security Policy",
+      "severity": "Low",
+      "description": "No CSP header found",
+      "platform": "generic",
+      "url": "https://mern-ust-project-2026-2.onrender.com/",
+      "cvss_score": 3.5,
+      "category": "Security Headers",
+      "remediation_priority": "Low",
+      "compliance_mappings": {
+        "OWASP": [],
+        "NIST": [],
+        "ISO_27001": [],
+        "SOC2": [],
+        "PCI_DSS": []
+      },
+      "timestamp": "2026-02-01T17:37:22.906500",
+      "evidence": "",
+      "references": [],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: missing content security policy",
+        "original_confidence": "tentative"
+      }
+    },
+    {
+      "id": "9eb13f62-c1a9-4359-8ed3-ea6b545b825d",
+      "type": "Missing Clickjacking Protection",
+      "severity": "Low",
+      "description": "No X-Frame-Options header",
+      "platform": "generic",
+      "url": "https://mern-ust-project-2026-2.onrender.com/",
+      "cvss_score": 3.5,
+      "category": "Security Headers",
+      "remediation_priority": "Low",
+      "compliance_mappings": {
+        "OWASP": [],
+        "NIST": [],
+        "ISO_27001": [],
+        "SOC2": [],
+        "PCI_DSS": []
+      },
+      "timestamp": "2026-02-01T17:37:22.908722",
+      "evidence": "",
+      "references": [],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: missing clickjacking protection",
+        "original_confidence": "tentative"
+      }
+    },
+    {
+      "id": "b8595960-e9d1-48a1-b56c-1675f680d8f2",
+      "type": "Cacheable HTTPS Response",
+      "severity": "Low",
+      "description": "HTTPS response may be cached",
+      "platform": "generic",
+      "url": "https://mern-ust-project-2026-2.onrender.com/",
+      "cvss_score": 3.5,
+      "category": "Security Headers",
+      "remediation_priority": "Low",
+      "compliance_mappings": {
+        "OWASP": [],
+        "NIST": [],
+        "ISO_27001": [],
+        "SOC2": [],
+        "PCI_DSS": []
+      },
+      "timestamp": "2026-02-01T17:37:22.910019",
+      "evidence": "public, max-age=0, s-maxage=300",
+      "references": [],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: cacheable https response",
+        "original_confidence": "tentative"
+      }
+    },
+    {
+      "id": "8d6b1e01-0086-4e5e-a57c-39c2d1aecc8f",
+      "type": "Hidden HTTP/2",
+      "severity": "Info",
+      "description": "Origin advertises HTTP/2 (h2) via ALPN; ensure HTTP/2-specific hardening (HPACK/DoS controls, reverse-proxy config).",
+      "platform": "generic",
+      "url": "https://mern-ust-project-2026-2.onrender.com/",
+      "cvss_score": 1.0,
+      "category": "Protocol Security",
+      "remediation_priority": "Informational",
+      "compliance_mappings": {
+        "OWASP": [],
+        "NIST": [],
+        "ISO_27001": [],
+        "SOC2": [],
+        "PCI_DSS": []
+      },
+      "timestamp": "2026-02-01T17:37:23.552716",
+      "evidence": "ALPN negotiated: h2",
+      "references": [],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: hidden http/2",
+        "original_confidence": "tentative"
+      }
+    },
+    {
+      "id": "1109bc71-5c5c-4f55-8210-18f2f0d9c5fb",
+      "type": "Request URL Override",
+      "severity": "Medium",
+      "description": "Server appears to honor URL override headers, which can lead to access-control bypass in some proxy/app configurations.",
+      "platform": "generic",
+      "url": "https://mern-ust-project-2026-2.onrender.com/",
+      "cvss_score": 5.5,
+      "category": "Access Control",
+      "remediation_priority": "Medium",
+      "compliance_mappings": {
+        "OWASP": [],
+        "NIST": [],
+        "ISO_27001": [],
+        "SOC2": [],
+        "PCI_DSS": []
+      },
+      "timestamp": "2026-02-01T17:37:24.112051",
+      "evidence": "Header X-Original-URL: /admin | direct 404 vs override 200",
+      "references": [],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: request url override",
+        "original_confidence": "tentative"
+      }
+    }
+  ],
+  "security_assessment": {
+    "risk_score": 3.7142857142857144,
+    "severity_counts": {
+      "Critical": 0,
+      "High": 0,
+      "Medium": 2,
+      "Low": 4,
+      "Info": 1
+    },
+    "platform_risks": {
+      "common_issues": [
+        "Missing security headers",
+        "XSS",
+        "SQL Injection"
+      ],
+      "risk_level": "High"
+    }
+  },
+  "compliance_summary": {
+    "OWASP": {
+      "coverage_percentage": 0.0,
+      "vulnerabilities_covered": 0,
+      "total_vulnerabilities": 7
+    },
+    "NIST": {
+      "coverage_percentage": 0.0,
+      "vulnerabilities_covered": 0,
+      "total_vulnerabilities": 7
+    },
+    "ISO_27001": {
+      "coverage_percentage": 0.0,
+      "vulnerabilities_covered": 0,
+      "total_vulnerabilities": 7
+    },
+    "SOC2": {
+      "coverage_percentage": 0.0,
+      "vulnerabilities_covered": 0,
+      "total_vulnerabilities": 7
+    },
+    "PCI_DSS": {
+      "coverage_percentage": 0.0,
+      "vulnerabilities_covered": 0,
+      "total_vulnerabilities": 7
+    }
+  },
+  "scan_metadata": {
+    "scan_type": "enhanced",
+    "plugins_used": true,
+    "parallel_used": true,
+    "plugin_count": 5
+  },
+  "performance_metrics": {
+    "scan_duration": 0,
+    "vulnerability_count": 7,
+    "plugin_results_count": 5
+  }
+}

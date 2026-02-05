@@ -20,6 +20,7 @@ from bs4 import BeautifulSoup
 
 from .base import BaseAnalyzer
 from .advanced_checks import AdvancedChecksMixin
+from .verification_metadata_mixin import VerificationMetadataMixin
 from .vulnerability_detection import (
     XSSDetector,
     SQLInjectionDetector,
@@ -28,7 +29,7 @@ from .vulnerability_detection import (
 )
 
 
-class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
+class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnalyzer):
     """
     Specialized analyzer for Airtable applications.
     
@@ -112,12 +113,13 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         xss_vulns = self.xss_detector.detect_reflected_xss(url, response, html_content)
         for vuln in xss_vulns:
             evidence = f"Parameter: {vuln['parameter']}, Context: {vuln['context']}"
-            self.add_enriched_vulnerability(
+            vulnerability = self._create_standard_vulnerability(
                 vuln['type'],
                 vuln['severity'],
                 f"{vuln['type']} detected in parameter '{vuln['parameter']}'",
                 evidence,
-                "Implement output encoding, input validation, and Content Security Policy",
+                url,
+                vuln.get('parameter', ''),
                 category="Cross-Site Scripting",
                 owasp="A03:2021 - Injection",
                 cwe=["CWE-79"],
@@ -128,9 +130,10 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     "https://cwe.mitre.org/data/definitions/79.html",
                     "https://portswigger.net/web-security/cross-site-scripting"
                 ],
-                parameter=vuln.get('parameter', ''),
-                url=vuln.get('url', url)
+                context=vuln.get('context', ''),
+                evidence_type="reflected_xss"
             )
+            self.vulnerabilities.append(vulnerability)
 
         # DOM-based XSS Detection
         dom_xss_vulns = self.xss_detector.detect_dom_xss(url, js_content)
@@ -160,12 +163,13 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         for vuln in sqli_vulns:
             if vuln['type'] == 'SQL Injection':
                 evidence = f"Parameter: {vuln.get('parameter', 'unknown')}"
-                self.add_enriched_vulnerability(
+                vulnerability = self._create_standard_vulnerability(
                     vuln['type'],
                     vuln['severity'],
                     f"{vuln['type']} vulnerability detected in parameter '{vuln.get('parameter', 'unknown')}'",
                     evidence,
-                    "Use parameterized queries, prepared statements, and input validation. Never concatenate user input into SQL queries.",
+                    url,
+                    vuln.get('parameter', ''),
                     category="Injection",
                     owasp="A03:2021 - Injection",
                     cwe=["CWE-89"],
@@ -176,9 +180,9 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                         "https://cwe.mitre.org/data/definitions/89.html",
                         "https://portswigger.net/web-security/sql-injection"
                     ],
-                    parameter=vuln.get('parameter', ''),
-                    url=vuln.get('url', url)
+                    evidence_type="sql_injection"
                 )
+                self.vulnerabilities.append(vulnerability)
             elif vuln['type'] == 'SQL Error Disclosure':
                 self.add_enriched_vulnerability(
                     vuln['type'],

@@ -1,0 +1,353 @@
+{
+  "url": "https://example.com",
+  "timestamp": "2026-02-01T07:02:59.602518",
+  "platform_type": "unknown",
+  "vulnerabilities": [
+    {
+      "type": "Insecure Cookie",
+      "severity": "Medium",
+      "description": "Cookie lacks Secure flag",
+      "evidence": "",
+      "recommendation": "Set Secure flag for cookies",
+      "confidence": "Firm",
+      "category": "Session Management",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-614"
+      ],
+      "parameter": "",
+      "url": "https://example.com/",
+      "timestamp": "2026-02-01T07:03:00.338183",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://example.com/",
+          "request": "GET / HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:02:59 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nlast-modified: Fri, 30 Jan 2026 05:47:18 GMT\nallow: GET, HEAD\nAge: 8694\ncf-cache-status: HIT\nVary: Accept-Encoding\nServer: cloudflare\nCF-RAY: 9c6e8e73fedc890e-MRS",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: insecure cookie",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Cookie Missing HttpOnly",
+      "severity": "Low",
+      "description": "Cookie lacks HttpOnly flag",
+      "evidence": "",
+      "recommendation": "Set HttpOnly flag for cookies",
+      "confidence": "Firm",
+      "category": "Session Management",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-1007"
+      ],
+      "parameter": "",
+      "url": "https://example.com/",
+      "timestamp": "2026-02-01T07:03:00.340163",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://example.com/",
+          "request": "GET / HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:02:59 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nlast-modified: Fri, 30 Jan 2026 05:47:18 GMT\nallow: GET, HEAD\nAge: 8694\ncf-cache-status: HIT\nVary: Accept-Encoding\nServer: cloudflare\nCF-RAY: 9c6e8e73fedc890e-MRS",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: cookie missing httponly",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Missing Content Security Policy",
+      "severity": "Low",
+      "description": "No CSP header found",
+      "evidence": "",
+      "recommendation": "Implement Content Security Policy",
+      "confidence": "Firm",
+      "category": "Security Headers",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-693"
+      ],
+      "parameter": "",
+      "url": "https://example.com/",
+      "timestamp": "2026-02-01T07:03:00.340315",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://example.com/",
+          "request": "GET / HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:02:59 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nlast-modified: Fri, 30 Jan 2026 05:47:18 GMT\nallow: GET, HEAD\nAge: 8694\ncf-cache-status: HIT\nVary: Accept-Encoding\nServer: cloudflare\nCF-RAY: 9c6e8e73fedc890e-MRS",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: missing content security policy",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Missing Clickjacking Protection",
+      "severity": "Low",
+      "description": "No X-Frame-Options header",
+      "evidence": "",
+      "recommendation": "Implement X-Frame-Options header",
+      "confidence": "Firm",
+      "category": "Security Headers",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-693"
+      ],
+      "parameter": "",
+      "url": "https://example.com/",
+      "timestamp": "2026-02-01T07:03:00.340512",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://example.com/",
+          "request": "GET / HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:02:59 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nlast-modified: Fri, 30 Jan 2026 05:47:18 GMT\nallow: GET, HEAD\nAge: 8694\ncf-cache-status: HIT\nVary: Accept-Encoding\nServer: cloudflare\nCF-RAY: 9c6e8e73fedc890e-MRS",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: missing clickjacking protection",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Cacheable HTTPS Response",
+      "severity": "Low",
+      "description": "HTTPS response may be cached",
+      "evidence": "",
+      "recommendation": "Implement proper cache control for sensitive pages",
+      "confidence": "Firm",
+      "category": "Security Headers",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-525"
+      ],
+      "parameter": "",
+      "url": "https://example.com/",
+      "timestamp": "2026-02-01T07:03:00.340831",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://example.com/",
+          "request": "GET / HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:02:59 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nlast-modified: Fri, 30 Jan 2026 05:47:18 GMT\nallow: GET, HEAD\nAge: 8694\ncf-cache-status: HIT\nVary: Accept-Encoding\nServer: cloudflare\nCF-RAY: 9c6e8e73fedc890e-MRS",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: cacheable https response",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Missing HSTS Header",
+      "severity": "Low",
+      "description": "No HSTS header found",
+      "evidence": "",
+      "recommendation": "Implement HTTP Strict Transport Security",
+      "confidence": "Firm",
+      "category": "Security Headers",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-523"
+      ],
+      "parameter": "",
+      "url": "https://example.com/",
+      "timestamp": "2026-02-01T07:03:00.340990",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://example.com/",
+          "request": "GET / HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:02:59 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nlast-modified: Fri, 30 Jan 2026 05:47:18 GMT\nallow: GET, HEAD\nAge: 8694\ncf-cache-status: HIT\nVary: Accept-Encoding\nServer: cloudflare\nCF-RAY: 9c6e8e73fedc890e-MRS",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: missing hsts header",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Missing X-Content-Type-Options",
+      "severity": "Low",
+      "description": "X-Content-Type-Options header missing or incorrect",
+      "evidence": "",
+      "recommendation": "Set X-Content-Type-Options: nosniff",
+      "confidence": "Firm",
+      "category": "Security Headers",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-173"
+      ],
+      "parameter": "",
+      "url": "https://example.com/",
+      "timestamp": "2026-02-01T07:03:00.342107",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://example.com/",
+          "request": "GET / HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:02:59 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nlast-modified: Fri, 30 Jan 2026 05:47:18 GMT\nallow: GET, HEAD\nAge: 8694\ncf-cache-status: HIT\nVary: Accept-Encoding\nServer: cloudflare\nCF-RAY: 9c6e8e73fedc890e-MRS",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: missing x-content-type-options",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Hidden HTTP/2",
+      "severity": "Info",
+      "description": "Origin advertises HTTP/2 (h2) via ALPN; ensure HTTP/2-specific hardening (HPACK/DoS controls, reverse-proxy config).",
+      "evidence": "ALPN negotiated: h2",
+      "recommendation": "Review HTTP/2 configuration at the edge (WAF/CDN/proxy), apply rate limits, and keep TLS stack updated.",
+      "confidence": "Firm",
+      "category": "Protocol Security",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-16"
+      ],
+      "parameter": "",
+      "url": "https://example.com/",
+      "timestamp": "2026-02-01T07:03:01.465212",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://example.com/",
+          "request": "GET / HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:02:59 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nlast-modified: Fri, 30 Jan 2026 05:47:18 GMT\nallow: GET, HEAD\nAge: 8694\ncf-cache-status: HIT\nVary: Accept-Encoding\nServer: cloudflare\nCF-RAY: 9c6e8e73fedc890e-MRS",
+          "evidence": [
+            "ALPN negotiated: h2"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: hidden http/2",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Request URL Override",
+      "severity": "Medium",
+      "description": "Server appears to honor URL override headers, which can lead to access-control bypass in some proxy/app configurations.",
+      "evidence": "Header X-Original-URL: /admin | direct 404 vs override 200",
+      "recommendation": "Disable/strip URL override headers at the edge proxy, or ensure the application does not trust them.",
+      "confidence": "Firm",
+      "category": "Access Control",
+      "owasp": "A01:2021 - Broken Access Control",
+      "cwe": [
+        "CWE-284"
+      ],
+      "parameter": "",
+      "url": "https://example.com/",
+      "timestamp": "2026-02-01T07:03:02.100464",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://example.com/",
+          "request": "GET / HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sun, 01 Feb 2026 04:02:59 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nlast-modified: Fri, 30 Jan 2026 05:47:18 GMT\nallow: GET, HEAD\nAge: 8694\ncf-cache-status: HIT\nVary: Accept-Encoding\nServer: cloudflare\nCF-RAY: 9c6e8e73fedc890e-MRS",
+          "evidence": [
+            "Header X-Original-URL: /admin | direct 404 vs override 200"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for vulnerability type: request url override",
+        "original_confidence": "Firm"
+      }
+    }
+  ],
+  "security_headers": {
+    "X-Frame-Options": "Missing",
+    "X-XSS-Protection": "Missing",
+    "X-Content-Type-Options": "Missing",
+    "Strict-Transport-Security": "Missing",
+    "Content-Security-Policy": "Missing",
+    "Referrer-Policy": "Missing",
+    "Permissions-Policy": "Missing",
+    "X-Permitted-Cross-Domain-Policies": "Missing",
+    "security_score": "0/8"
+  },
+  "ssl_analysis": {
+    "version": "TLSv1.3",
+    "cipher": [
+      "TLS_AES_256_GCM_SHA384",
+      "TLSv1.3",
+      256
+    ],
+    "certificate_subject": [],
+    "certificate_issuer": [],
+    "certificate_expiry": "Unknown",
+    "certificate_san": []
+  },
+  "information_disclosure": [],
+  "authentication_issues": [],
+  "authorization_issues": [],
+  "data_exposure": [],
+  "api_endpoints": [],
+  "forms_analysis": [],
+  "recommendations": [
+    {
+      "category": "Security Headers",
+      "priority": "High",
+      "description": "Implement missing security headers: X-Frame-Options, X-XSS-Protection, X-Content-Type-Options, Strict-Transport-Security, Content-Security-Policy, Referrer-Policy, Permissions-Policy, X-Permitted-Cross-Domain-Policies"
+    }
+  ],
+  "status_code": 200,
+  "response_time": 0.411167,
+  "generic_analysis": {},
+  "verification_summary": {
+    "total_vulnerabilities": 9,
+    "verified_vulnerabilities": 0,
+    "high_confidence_verifications": 0,
+    "verification_rate": 0.0
+  }
+}
