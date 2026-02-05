@@ -5,11 +5,10 @@ from __future__ import annotations
 
 import re
 import secrets
-import socket
-import ssl
 from typing import Iterable, List, Optional
 from urllib.parse import parse_qs, urljoin, urlparse
 
+import httpx
 import requests
 
 
@@ -34,41 +33,34 @@ class AdvancedChecksMixin:
         return [value]
 
     def _check_http2_support(self, url: str):
-        """Detect whether the origin advertises HTTP/2 via ALPN.
-
-        Burp Suite's "Hidden HTTP 2" is often an informational finding: the server supports h2.
-        """
+        """Detect whether the origin negotiates HTTP/2 with an actual request."""
 
         parsed = urlparse(url)
         if parsed.scheme.lower() != "https":
             return
 
-        hostname = parsed.hostname
-        port = parsed.port or 443
-        if not hostname:
+        if not parsed.hostname:
             return
 
         try:
-            ctx = ssl.create_default_context()
-            ctx.set_alpn_protocols(["h2", "http/1.1"])
-
-            with socket.create_connection((hostname, port), timeout=5) as sock:
-                with ctx.wrap_socket(sock, server_hostname=hostname) as ssock:
-                    negotiated = ssock.selected_alpn_protocol()
-
-            if negotiated == "h2":
-                self.add_enriched_vulnerability(
-                    "Hidden HTTP/2",
-                    "Info",
-                    "Origin advertises HTTP/2 (h2) via ALPN; ensure HTTP/2-specific hardening (HPACK/DoS controls, reverse-proxy config).",
-                    f"ALPN negotiated: {negotiated}",
-                    "Review HTTP/2 configuration at the edge (WAF/CDN/proxy), apply rate limits, and keep TLS stack updated.",
-                    category="Protocol Security",
-                    owasp="A05:2021 - Security Misconfiguration",
-                    cwe=["CWE-16"],
-                )
-        except Exception:
+            with httpx.Client(http2=True, timeout=6.0, follow_redirects=True) as client:
+                response = client.get(url)
+        except httpx.HTTPError:
             return
+
+        if response.http_version != "HTTP/2":
+            return
+
+        self.add_enriched_vulnerability(
+            "Hidden HTTP/2",
+            "Info",
+            "Origin negotiated HTTP/2 for the request; ensure HTTP/2-specific hardening (HPACK/DoS controls, reverse-proxy config).",
+            f"HTTP version negotiated: {response.http_version}",
+            "Review HTTP/2 configuration at the edge (WAF/CDN/proxy), apply rate limits, and keep TLS stack updated.",
+            category="Protocol Security",
+            owasp="A05:2021 - Security Misconfiguration",
+            cwe=["CWE-16"],
+        )
 
     def _check_request_url_override(self, url: str):
         """Active check for request URL override behavior.
@@ -90,10 +82,13 @@ class AdvancedChecksMixin:
         ]
 
         try:
+            success_codes = {200, 201, 202, 204, 301, 302, 303, 307, 308}
+
             for path in test_paths:
                 direct_url = urljoin(origin, path.lstrip("/"))
 
                 direct = self.session.get(direct_url, timeout=6, allow_redirects=False)
+                direct_status = direct.status_code
 
                 for header in override_headers:
                     overridden = self.session.get(
@@ -102,15 +97,17 @@ class AdvancedChecksMixin:
                         timeout=6,
                         allow_redirects=False,
                     )
+                    override_status = overridden.status_code
 
-                    # Flag if direct is clearly missing, but override changes outcome
-                    if direct.status_code in {400, 404} and overridden.status_code not in {400, 404}:
+                    # Flag if direct access is denied/missing, but override yields a successful response.
+                    if direct_status in {401, 403, 404} and override_status in success_codes:
                         self.add_enriched_vulnerability(
                             "Request URL Override",
                             "Medium",
-                            "Server appears to honor URL override headers, which can lead to access-control bypass in some proxy/app configurations.",
-                            f"Header {header}: {path} | direct {direct.status_code} vs override {overridden.status_code}",
-                            "Disable/strip URL override headers at the edge proxy, or ensure the application does not trust them.",
+                            "Potential request URL override behavior detected; manual verification is required to confirm access-control impact.",
+                            f"Header {header}: {path} | direct {direct_status} vs override {override_status}",
+                            "Disable/strip URL override headers at the edge proxy, or ensure the application does not trust them. Manually verify whether sensitive resources become accessible.",
+                            confidence="Tentative",
                             category="Access Control",
                             owasp="A01:2021 - Broken Access Control",
                             cwe=["CWE-284"],

@@ -583,36 +583,63 @@ class BubbleAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnalyze
     def _check_secrets_in_javascript(self, js_content: str, url: str):
         """Check for secrets in JavaScript"""
         secret_patterns = [
-            r'["\']([A-Za-z0-9]{32,})["\']',  # Potential API keys
-            r'password["\']?\s*[:=]\s*["\']([^"\']+)["\']',
-            r'secret["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            {
+                "pattern": r'(?i)(?:api[_-]?key|apikey|access[_-]?token|auth[_-]?token|client_secret|secret|password|passwd)\s*[:=]\s*["\']([^"\']{8,})["\']',
+                "description": "Hardcoded credential/token",
+                "group": 1,
+            },
         ]
 
-        for pattern in secret_patterns:
-            matches = re.findall(pattern, js_content, re.IGNORECASE)
-            for match in matches:
-                if len(match) > 10:  # Avoid false positives
-                    self.add_enriched_vulnerability(
-                        "Potential Secret in JavaScript",
-                        "High",
-                        f"Potential secret found in JavaScript: {match[:10]}...",
-                        match[:20],
-                        "Remove secrets from client-side code",
-                        category="Secret Management",
-                        owasp="A02:2021 - Cryptographic Failures",
-                        cwe=["CWE-798"],
-                        parameter=match,
-                        url=url
-                    )
+        placeholder_values = {
+            "changeme",
+            "change-me",
+            "replace_me",
+            "replace-me",
+            "example",
+            "sample",
+            "test",
+            "dummy",
+            "your_api_key",
+            "your-api-key",
+            "yourapikey",
+            "your_token",
+            "your-token",
+            "yourpassword",
+        }
+
+        for entry in secret_patterns:
+            for match in re.finditer(entry["pattern"], js_content):
+                value = match.group(entry["group"]).strip()
+                value_lower = value.lower()
+
+                if value_lower in placeholder_values:
+                    continue
+
+                if re.fullmatch(r"[xX*]{6,}", value):
+                    continue
+
+                self.add_enriched_vulnerability(
+                    "Potential Secret in JavaScript",
+                    "High",
+                    f"{entry['description']} found in JavaScript: {value[:10]}...",
+                    value[:20],
+                    "Remove secrets from client-side code",
+                    category="Secret Management",
+                    owasp="A02:2021 - Cryptographic Failures",
+                    cwe=["CWE-798"],
+                    parameter=value,
+                    url=url,
+                )
 
     def _check_cookie_security(self, response: requests.Response):
         """Check cookie security headers"""
         cookies = self._get_set_cookie_headers(response)
 
         for cookie in cookies:
-            cookie_name = cookie.split("=")[0] if "=" in cookie else "Unknown"
+            cookie_name = cookie.split("=", 1)[0] if "=" in cookie else "Unknown"
+            cookie_lower = cookie.lower()
 
-            if "Secure" not in cookie:
+            if "secure" not in cookie_lower:
                 self.add_enriched_vulnerability(
                     "Insecure Cookie (Missing Secure Flag)",
                     "Medium",
@@ -624,7 +651,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnalyze
                     cwe=["CWE-614"]
                 )
 
-            if "HttpOnly" not in cookie:
+            if "httponly" not in cookie_lower:
                 self.add_enriched_vulnerability(
                     "Cookie without HttpOnly Flag",
                     "Low",
@@ -636,7 +663,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnalyze
                     cwe=["CWE-1004"]
                 )
 
-            if "SameSite" not in cookie:
+            if "samesite" not in cookie_lower:
                 self.add_enriched_vulnerability(
                     "Cookie without SameSite Attribute",
                     "Low",
@@ -726,18 +753,49 @@ class BubbleAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnalyze
 
     def _check_cacheable_https(self, response: requests.Response, url: str):
         """Check for cacheable HTTPS responses"""
+        if not url.lower().startswith("https://"):
+            return
+
         cache_control = response.headers.get("Cache-Control", "")
-        if "no-store" not in cache_control and url.startswith("https://"):
-            self.add_enriched_vulnerability(
-                "Cacheable HTTPS Response",
-                "Low",
-                "HTTPS response may be cached",
-                cache_control,
-                "Implement proper cache control for sensitive pages",
-                category="Security Headers",
-                owasp="A05:2021 - Security Misconfiguration",
-                cwe=["CWE-525"]
-            )
+        pragma = response.headers.get("Pragma", "")
+        cache_control_lower = cache_control.lower()
+
+        if any(directive in cache_control_lower for directive in ["no-store", "no-cache", "private"]):
+            return
+
+        if "no-cache" in pragma.lower():
+            return
+
+        request_headers = {}
+        if getattr(response, "request", None) is not None:
+            request_headers = getattr(response.request, "headers", {}) or {}
+
+        sensitive_request = any(
+            header in request_headers for header in ["Authorization", "Cookie"]
+        )
+
+        sensitive_cookie_names = ["session", "auth", "token", "sid", "jwt", "sso"]
+        sensitive_cookie = False
+        for cookie in self._get_set_cookie_headers(response):
+            cookie_name = cookie.split("=", 1)[0].strip().lower()
+            if any(name in cookie_name for name in sensitive_cookie_names):
+                sensitive_cookie = True
+                break
+
+        if not sensitive_request and not sensitive_cookie:
+            return
+
+        self.add_enriched_vulnerability(
+            "Cacheable HTTPS Response",
+            "Low",
+            "Potentially cacheable HTTPS response detected; manual verification is required to confirm sensitive content exposure.",
+            f"Cache-Control={cache_control} Pragma={pragma}",
+            "Apply Cache-Control: no-store (or private, no-cache) to sensitive/authenticated pages and confirm behavior via manual testing.",
+            confidence="Tentative",
+            category="Security Headers",
+            owasp="A05:2021 - Security Misconfiguration",
+            cwe=["CWE-525"]
+        )
 
     def _check_open_redirection(self, js_content: str):
         """Check for open redirection vulnerabilities"""

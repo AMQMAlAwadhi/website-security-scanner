@@ -615,112 +615,136 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                 ],
             )
 
+
     def _check_secrets_in_javascript(self, js_content: str, url: str):
         """Check for secrets in JavaScript"""
         secret_patterns = [
-            r'["\']([A-Za-z0-9]{32,})["\']',  # Potential API keys
-            r'password["\']?\s*[:=]\s*["\']([^"\']+)["\']',
-            r'secret["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            {
+                "pattern": r'(?i)(?:api[_-]?key|apikey|access[_-]?token|auth[_-]?token|client_secret|secret|password|passwd)\s*[:=]\s*["\']([^"\']{8,})["\']',
+                "description": "Hardcoded credential/token",
+                "group": 1,
+            }
         ]
 
-        for pattern in secret_patterns:
-            matches = re.findall(pattern, js_content, re.IGNORECASE)
-            for match in matches:
-                if len(match) > 10:  # Avoid false positives
-                    # Create evidence pattern for secret highlighting
-                    secret_evidence = {
-                        "type": "regex",
-                        "pattern": rf"(?i){re.escape(match[:20])}"
-                    }
-                    
-                    self.add_enriched_vulnerability(
-                        "Potential Secret in JavaScript",
-                        "High",
-                        f"Potential secret found in JavaScript: {match[:10]}...",
-                        secret_evidence,
-                        "Remove secrets from client-side code",
-                        category="Secret Management",
-                        owasp="A02:2021 - Cryptographic Failures",
-                        cwe=["CWE-798"],
-                        background=(
-                            "Secrets embedded in JavaScript code are exposed to anyone who can access the application. "
-                            "This includes API keys, passwords, tokens, and other sensitive credentials that should "
-                            "never be stored in client-side code."
-                        ),
-                        impact=(
-                            "Exposed secrets allow attackers to directly access backend services, APIs, or databases. "
-                            "This can lead to complete system compromise, data breaches, and unauthorized access to "
-                            "critical systems and data."
-                        ),
-                        references=[
-                            "https://owasp.org/www-project-top-ten/2021/A02_2021-Cryptographic_Failures/",
-                            "https://cwe.mitre.org/data/definitions/798.html",
-                            "https://github.com/GitHubSecrets/GitHubSecrets",
-                        ],
-                    )
+        placeholder_values = {
+            "changeme",
+            "change-me",
+            "replace_me",
+            "replace-me",
+            "example",
+            "sample",
+            "test",
+            "dummy",
+            "your_api_key",
+            "your-api-key",
+            "yourapikey",
+            "your_token",
+            "your-token",
+            "yourpassword",
+        }
+
+        for entry in secret_patterns:
+            for match in re.finditer(entry["pattern"], js_content):
+                value = match.group(entry["group"]).strip()
+                value_lower = value.lower()
+
+                if value_lower in placeholder_values:
+                    continue
+
+                if re.fullmatch(r"[xX*]{6,}", value):
+                    continue
+
+                secret_evidence = {
+                    "type": "regex",
+                    "pattern": rf"(?i){re.escape(value[:20])}",
+                }
+
+                self.add_enriched_vulnerability(
+                    "Potential Secret in JavaScript",
+                    "High",
+                    f"{entry['description']} found in JavaScript: {value[:10]}...",
+                    secret_evidence,
+                    "Remove secrets from client-side code",
+                    category="Secret Management",
+                    owasp="A02:2021 - Cryptographic Failures",
+                    cwe=["CWE-798"],
+                    background=(
+                        "Secrets embedded in JavaScript code are exposed to anyone who can access the application. "
+                        "This includes API keys, passwords, tokens, and other sensitive credentials that should "
+                        "never be stored in client-side code."
+                    ),
+                    impact=(
+                        "Exposed secrets allow attackers to directly access backend services, APIs, or databases. "
+                        "This can lead to complete system compromise, data breaches, and unauthorized access to "
+                        "critical systems and data."
+                    ),
+                    references=[
+                        "https://owasp.org/www-project-top-ten/2021/A02_2021-Cryptographic_Failures/",
+                        "https://cwe.mitre.org/data/definitions/798.html",
+                        "https://github.com/GitHubSecrets/GitHubSecrets",
+                    ],
+                )
 
     def _check_cookie_security(self, response: requests.Response):
         """Check cookie security attributes"""
-        set_cookies = response.headers.get("Set-Cookie", "")
-        if not set_cookies:
+        cookies = self._get_set_cookie_headers(response)
+        if not cookies:
             return
 
-        # Check for missing Secure attribute on cookies in HTTPS sessions
-        if "Secure" not in set_cookies:
-            # Create evidence pattern to highlight Set-Cookie header lines
-            cookie_evidence = {
-                "type": "regex",
-                "pattern": r"(?i)^Set-Cookie:.*",
-            }
-            
-            self.add_enriched_vulnerability(
-                "Cookie Without Secure Attribute",
-                "Low",
-                "Cookie lacks the 'Secure' attribute",
-                cookie_evidence,
-                "Set the 'Secure' attribute for all cookies. Ensure the application is only served over HTTPS.",
-                category="Session Management",
-                owasp="A05:2021 - Security Misconfiguration",
-                cwe=["CWE-614"],
-                background=(
-                    "The 'Secure' attribute instructs the browser to only transmit the cookie over encrypted (HTTPS) connections. "
-                    "When this attribute is missing, the cookie may be sent over unencrypted HTTP, making it vulnerable to interception."
-                ),
-                impact=(
-                    "Insecure cookies can be intercepted by an attacker using man-in-the-middle (MITM) techniques "
-                    "on insecure networks (like public Wi-Fi), leading to session hijacking and unauthorized account access."
-                ),
-                references=[
-                    "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#Secure",
-                    "https://cwe.mitre.org/data/definitions/614.html",
-                    "https://owasp.org/www-community/vulnerabilities/Insecure_Cookie"
-                ],
-            )
+        for cookie in cookies:
+            cookie_name = cookie.split("=", 1)[0] if "=" in cookie else "Unknown"
+            cookie_lower = cookie.lower()
 
-        # Check for missing HttpOnly attribute
-        if "HttpOnly" not in set_cookies:
-            self.add_enriched_vulnerability(
-                "Cookie Without HttpOnly Attribute",
-                "Low",
-                "Cookie lacks the 'HttpOnly' attribute",
-                {"type": "regex", "pattern": r"(?i)^Set-Cookie:.*"},
-                "Set the 'HttpOnly' attribute for all sensitive cookies to prevent client-side script access.",
-                category="Session Management",
-                owasp="A05:2021 - Security Misconfiguration",
-                cwe=["CWE-1004"],
-                background=(
-                    "The 'HttpOnly' attribute prevents client-side scripts (like JavaScript) from accessing the cookie, "
-                    "which is a critical defense against session theft via Cross-Site Scripting (XSS)."
-                ),
-                impact=(
-                    "If an XSS vulnerability exists, an attacker can steal the session cookie and hijack the user's "
-                    "session if the 'HttpOnly' attribute is missing."
-                ),
-                references=[
-                    "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#HttpOnly",
-                    "https://cwe.mitre.org/data/definitions/1004.html"
-                ],
-            )
+            # Check for missing Secure attribute on cookies in HTTPS sessions
+            if "secure" not in cookie_lower:
+                self.add_enriched_vulnerability(
+                    "Cookie Without Secure Attribute",
+                    "Low",
+                    f"Cookie '{cookie_name}' lacks the 'Secure' attribute",
+                    cookie[:200],
+                    "Set the 'Secure' attribute for all cookies. Ensure the application is only served over HTTPS.",
+                    category="Session Management",
+                    owasp="A05:2021 - Security Misconfiguration",
+                    cwe=["CWE-614"],
+                    background=(
+                        "The 'Secure' attribute instructs the browser to only transmit the cookie over encrypted (HTTPS) connections. "
+                        "When this attribute is missing, the cookie may be sent over unencrypted HTTP, making it vulnerable to interception."
+                    ),
+                    impact=(
+                        "Insecure cookies can be intercepted by an attacker using man-in-the-middle (MITM) techniques "
+                        "on insecure networks (like public Wi-Fi), leading to session hijacking and unauthorized account access."
+                    ),
+                    references=[
+                        "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#Secure",
+                        "https://cwe.mitre.org/data/definitions/614.html",
+                        "https://owasp.org/www-community/vulnerabilities/Insecure_Cookie"
+                    ],
+                )
+
+            # Check for missing HttpOnly attribute
+            if "httponly" not in cookie_lower:
+                self.add_enriched_vulnerability(
+                    "Cookie Without HttpOnly Attribute",
+                    "Low",
+                    f"Cookie '{cookie_name}' lacks the 'HttpOnly' attribute",
+                    cookie[:200],
+                    "Set the 'HttpOnly' attribute for all sensitive cookies to prevent client-side script access.",
+                    category="Session Management",
+                    owasp="A05:2021 - Security Misconfiguration",
+                    cwe=["CWE-1004"],
+                    background=(
+                        "The 'HttpOnly' attribute prevents client-side scripts (like JavaScript) from accessing the cookie, "
+                        "which is a critical defense against session theft via Cross-Site Scripting (XSS)."
+                    ),
+                    impact=(
+                        "If an XSS vulnerability exists, an attacker can steal the session cookie and hijack the user's "
+                        "session if the 'HttpOnly' attribute is missing."
+                    ),
+                    references=[
+                        "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#HttpOnly",
+                        "https://cwe.mitre.org/data/definitions/1004.html"
+                    ],
+                )
 
     def _check_csp_policy(self, response: requests.Response):
         """Check Content Security Policy"""
@@ -993,39 +1017,66 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
 
     def _check_cacheable_https(self, response: requests.Response, url: str):
         """Check for cacheable HTTPS responses"""
+        if not url.lower().startswith("https://"):
+            return
+
         cache_control = response.headers.get("Cache-Control", "")
-        if "no-store" not in cache_control and url.startswith("https://"):
-            # Create evidence pattern for Cache-Control header highlighting
-            cache_evidence = {
-                "type": "regex",
-                "pattern": r"(?i)^Cache-Control:.*"
-            } if cache_control else []
-            
-            self.add_enriched_vulnerability(
-                "Cacheable HTTPS Response",
-                "Low",
-                "HTTPS response may be cached",
-                cache_evidence,
-                "Implement proper cache control for sensitive pages",
-                category="Security Headers",
-                owasp="A05:2021 - Security Misconfiguration",
-                cwe=["CWE-525"],
-                background=(
-                    "HTTPS responses without proper cache control headers may be stored by "
-                    "intermediate caches, potentially exposing sensitive data to unauthorized parties "
-                    "who can access cached content."
-                ),
-                impact=(
-                    "Cacheable HTTPS responses can lead to sensitive information being stored "
-                    "in shared caches, allowing unauthorized access to private data and potentially "
-                    "violating privacy regulations."
-                ),
-                references=[
-                    "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control",
-                    "https://owasp.org/www-project-top-ten/2021/A05_2021-Security_Misconfiguration/",
-                    "https://cwe.mitre.org/data/definitions/525.html",
-                ],
-            )
+        pragma = response.headers.get("Pragma", "")
+        cache_control_lower = cache_control.lower()
+
+        if any(directive in cache_control_lower for directive in ["no-store", "no-cache", "private"]):
+            return
+
+        if "no-cache" in pragma.lower():
+            return
+
+        request_headers = {}
+        if getattr(response, "request", None) is not None:
+            request_headers = getattr(response.request, "headers", {}) or {}
+
+        sensitive_request = any(
+            header in request_headers for header in ["Authorization", "Cookie"]
+        )
+
+        sensitive_cookie_names = ["session", "auth", "token", "sid", "jwt", "sso"]
+        sensitive_cookie = False
+        for cookie in self._get_set_cookie_headers(response):
+            cookie_name = cookie.split("=", 1)[0].strip().lower()
+            if any(name in cookie_name for name in sensitive_cookie_names):
+                sensitive_cookie = True
+                break
+
+        if not sensitive_request and not sensitive_cookie:
+            return
+
+        cache_evidence = f"Cache-Control={cache_control} Pragma={pragma}"
+
+        self.add_enriched_vulnerability(
+            "Cacheable HTTPS Response",
+            "Low",
+            "Potentially cacheable HTTPS response detected; manual verification is required to confirm sensitive content exposure.",
+            cache_evidence,
+            "Apply Cache-Control: no-store (or private, no-cache) to sensitive/authenticated pages and confirm behavior via manual testing.",
+            confidence="Tentative",
+            category="Security Headers",
+            owasp="A05:2021 - Security Misconfiguration",
+            cwe=["CWE-525"],
+            background=(
+                "HTTPS responses without proper cache control headers may be stored by "
+                "intermediate caches, potentially exposing sensitive data to unauthorized parties "
+                "who can access cached content."
+            ),
+            impact=(
+                "Cacheable HTTPS responses can lead to sensitive information being stored "
+                "in shared caches, allowing unauthorized access to private data and potentially "
+                "violating privacy regulations."
+            ),
+            references=[
+                "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control",
+                "https://owasp.org/www-project-top-ten/2021/A05_2021-Security_Misconfiguration/",
+                "https://cwe.mitre.org/data/definitions/525.html",
+            ],
+        )
 
     def _check_open_redirection(self, js_content: str):
         """Check for open redirection vulnerabilities"""
