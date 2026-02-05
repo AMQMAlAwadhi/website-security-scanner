@@ -22,6 +22,7 @@ from bs4 import BeautifulSoup
 
 from .base import BaseAnalyzer
 from .advanced_checks import AdvancedChecksMixin
+from .common_web_checks import CommonWebChecksMixin
 from .verification_metadata_mixin import VerificationMetadataMixin
 from .vulnerability_detection import (
     XSSDetector,
@@ -33,7 +34,7 @@ from .enhanced_checks import EnhancedSecurityChecks
 from ..utils.evidence_builder import EvidenceBuilder
 
 
-class BubbleAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnalyzer):
+class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMetadataMixin, BaseAnalyzer):
     """
     Specialized analyzer for Bubble.io applications.
     
@@ -109,7 +110,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnalyze
 
         # Perform generic security checks
         self._check_session_tokens_in_url(url)
-        self._check_secrets_in_javascript(js_content, url)
+        self._check_secrets_in_javascript(js_content, url, soup)
         self._check_cookie_security(response)
         self._check_csp_policy(response)
         self._check_clickjacking(response)
