@@ -1,0 +1,721 @@
+{
+  "analysis_timestamp": "2026-02-06T00:11:44.270710",
+  "verification_methods": [
+    "Live Content Verification",
+    "Evidence Consistency Analysis",
+    "Pattern Recognition Analysis",
+    "Timestamp Forensics",
+    "Platform Detection Verification",
+    "HTTP/2 Claim Validation",
+    "Secret Detection Analysis"
+  ],
+  "findings": {
+    "authentic_vulnerabilities": [
+      {
+        "type": "cookie scoped to parent domain",
+        "evidence": "Host=amqmalawadhi-85850.bubble...",
+        "file": "data/scans\\scan_20260131_180245_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "dom data manipulation (dom-based)",
+        "evidence": "Sources=1 Sinks=1...",
+        "file": "data/scans\\scan_20260131_180245_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "dom data manipulation (dom-based)",
+        "evidence": "Sources=1 Sinks=1...",
+        "file": "data/scans\\scan_20260131_180635_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "cookie scoped to parent domain",
+        "evidence": "Host=amqmalawadhi-85850.bubble...",
+        "file": "data/scans\\scan_20260131_181021_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "dom data manipulation (dom-based)",
+        "evidence": "Sources=1 Sinks=1...",
+        "file": "data/scans\\scan_20260131_181021_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "cookie scoped to parent domain",
+        "evidence": "Host=amqmalawadhi-85850.bubble...",
+        "file": "data/scans\\scan_20260131_181527_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "dom data manipulation (dom-based)",
+        "evidence": "Sources=1 Sinks=1...",
+        "file": "data/scans\\scan_20260131_181527_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "missing clickjacking protection",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260131_182926_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing clickjacking protection",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260131_190533_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "weak clickjacking protection",
+        "evidence": "{'type': 'exact', 'pattern': '...",
+        "file": "data/scans\\scan_20260131_190602_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "weak clickjacking protection",
+        "evidence": "{'type': 'exact', 'pattern': '...",
+        "file": "data/scans\\scan_20260131_192217_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "weak clickjacking protection",
+        "evidence": "{'type': 'exact', 'pattern': '...",
+        "file": "data/scans\\scan_20260131_192620_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "weak clickjacking protection",
+        "evidence": "{'type': 'exact', 'pattern': '...",
+        "file": "data/scans\\scan_20260131_192721_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "weak clickjacking protection",
+        "evidence": "{'type': 'exact', 'pattern': '...",
+        "file": "data/scans\\scan_20260131_193226_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "weak clickjacking protection",
+        "evidence": "{'type': 'exact', 'pattern': '...",
+        "file": "data/scans\\scan_20260131_193642_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "weak clickjacking protection",
+        "evidence": "{'type': 'exact', 'pattern': '...",
+        "file": "data/scans\\scan_20260131_193651_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "weak clickjacking protection",
+        "evidence": "{'type': 'exact', 'pattern': '...",
+        "file": "data/scans\\scan_20260131_194038_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "weak clickjacking protection",
+        "evidence": "{'type': 'exact', 'pattern': '...",
+        "file": "data/scans\\scan_20260131_194908_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing clickjacking protection",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260131_194945_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing clickjacking protection",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260131_194951_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "weak clickjacking protection",
+        "evidence": "{'type': 'exact', 'pattern': '...",
+        "file": "data/scans\\scan_20260131_195121_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "cookie scoped to parent domain",
+        "evidence": "Host=amqmalawadhi-85850.bubble...",
+        "file": "data/scans\\scan_20260131_200303_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "dom data manipulation (dom-based)",
+        "evidence": "Sources=1 Sinks=1...",
+        "file": "data/scans\\scan_20260131_200303_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "missing clickjacking protection",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_063721_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing permissions-policy header",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_063721_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing x-permitted-cross-domain-policies header",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_063721_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "missing clickjacking protection",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_065233_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing permissions-policy header",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_065233_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing x-permitted-cross-domain-policies header",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_065233_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "missing clickjacking protection",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_070259_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing clickjacking protection",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_070357_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing permissions-policy header",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_070357_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing x-permitted-cross-domain-policies header",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_070357_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "missing clickjacking protection",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_070427_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing permissions-policy header",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_070427_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing x-permitted-cross-domain-policies header",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_070427_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "missing clickjacking protection",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_070708_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing permissions-policy header",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_070708_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing x-permitted-cross-domain-policies header",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_070708_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "missing clickjacking protection",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_070722_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing permissions-policy header",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_070722_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing x-permitted-cross-domain-policies header",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_070722_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "missing clickjacking protection",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_073401_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing permissions-policy header",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_073401_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing x-permitted-cross-domain-policies header",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_073401_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "weak clickjacking protection",
+        "evidence": "{'type': 'exact', 'pattern': '...",
+        "file": "data/scans\\scan_20260201_073430_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing permissions-policy header",
+        "evidence": "[]...",
+        "file": "data/scans\\scan_20260201_073430_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing x-permitted-cross-domain-policies header",
+        "evidence": "[]...",
+        "file": "data/scans\\scan_20260201_073430_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "missing clickjacking protection",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_073501_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing permissions-policy header",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_073539_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing x-permitted-cross-domain-policies header",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_073539_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "cookie scoped to parent domain",
+        "evidence": "Host=amqmalawadhi-85850.bubble...",
+        "file": "data/scans\\scan_20260201_073539_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "dom data manipulation (dom-based)",
+        "evidence": "Sources=1 Sinks=1...",
+        "file": "data/scans\\scan_20260201_073539_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "dom-based cross-site scripting (xss)",
+        "evidence": "Source: document\\.location, Si...",
+        "file": "data/scans\\scan_20260201_073539_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "missing permissions-policy header",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_073619_0.json",
+        "reason": "Missing security headers are verifiable"
+      },
+      {
+        "type": "missing x-permitted-cross-domain-policies header",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_073619_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "dom data manipulation (dom-based)",
+        "evidence": "Sources=1 Sinks=1...",
+        "file": "data/scans\\scan_20260201_073619_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "dom-based cross-site scripting (xss)",
+        "evidence": "Source: document\\.location, Si...",
+        "file": "data/scans\\scan_20260201_073619_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "dom data manipulation (dom-based)",
+        "evidence": "Sources=1 Sinks=1...",
+        "file": "data/scans\\scan_20260201_173627_0.json",
+        "reason": "DOM analysis can be verified"
+      },
+      {
+        "type": "missing clickjacking protection",
+        "evidence": "...",
+        "file": "data/scans\\scan_20260201_173720_0.json",
+        "reason": "Missing security headers are verifiable"
+      }
+    ],
+    "false_positives": [
+      {
+        "type": "Bubble Session ID False Positive",
+        "evidence": "1769871767269x623725...",
+        "file": "data/scans\\scan_20260131_180245_0.json",
+        "reason": "Bubble session IDs are not secrets"
+      },
+      {
+        "type": "Bubble Session ID False Positive",
+        "evidence": "1769871767269x623725...",
+        "file": "data/scans\\scan_20260131_180245_0.json",
+        "reason": "Bubble session IDs are not secrets"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260131_180245_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "Bubble Session ID False Positive",
+        "evidence": "1769871767269x623725...",
+        "file": "data/scans\\scan_20260131_180635_0.json",
+        "reason": "Bubble session IDs are not secrets"
+      },
+      {
+        "type": "Bubble Session ID False Positive",
+        "evidence": "1769871767269x623725...",
+        "file": "data/scans\\scan_20260131_180635_0.json",
+        "reason": "Bubble session IDs are not secrets"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260131_180635_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "Bubble Session ID False Positive",
+        "evidence": "1769872220522x386523...",
+        "file": "data/scans\\scan_20260131_181021_0.json",
+        "reason": "Bubble session IDs are not secrets"
+      },
+      {
+        "type": "Bubble Session ID False Positive",
+        "evidence": "1769872220522x386523...",
+        "file": "data/scans\\scan_20260131_181021_0.json",
+        "reason": "Bubble session IDs are not secrets"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260131_181021_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "Bubble Session ID False Positive",
+        "evidence": "1769872526992x384024...",
+        "file": "data/scans\\scan_20260131_181527_0.json",
+        "reason": "Bubble session IDs are not secrets"
+      },
+      {
+        "type": "Bubble Session ID False Positive",
+        "evidence": "1769872526992x384024...",
+        "file": "data/scans\\scan_20260131_181527_0.json",
+        "reason": "Bubble session IDs are not secrets"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260131_181527_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260131_182926_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260131_190533_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260131_190602_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260131_192217_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260131_192620_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260131_192721_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260131_193226_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260131_193642_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260131_193651_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260131_194038_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260131_194908_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260131_194945_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260131_194951_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260131_195121_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "Bubble Session ID False Positive",
+        "evidence": "1769878982259x837315...",
+        "file": "data/scans\\scan_20260131_200303_0.json",
+        "reason": "Bubble session IDs are not secrets"
+      },
+      {
+        "type": "Bubble Session ID False Positive",
+        "evidence": "1769878982259x837315...",
+        "file": "data/scans\\scan_20260131_200303_0.json",
+        "reason": "Bubble session IDs are not secrets"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260131_200303_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260201_063721_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260201_065233_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260201_070259_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260201_070357_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260201_070427_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260201_070708_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260201_070722_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260201_073401_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260201_073430_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260201_073501_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "Bubble Session ID False Positive",
+        "evidence": "1769920540502x490793...",
+        "file": "data/scans\\scan_20260201_073539_0.json",
+        "reason": "Bubble session IDs are not secrets"
+      },
+      {
+        "type": "Bubble Session ID False Positive",
+        "evidence": "1769920540502x490793...",
+        "file": "data/scans\\scan_20260201_073539_0.json",
+        "reason": "Bubble session IDs are not secrets"
+      },
+      {
+        "type": "Cookie Security False Positive",
+        "evidence": "amqmalawadhi-85850_u1_testmain...",
+        "file": "data/scans\\scan_20260201_073539_0.json",
+        "reason": "Cookie actually has Secure flag"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260201_073539_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "Bubble Session ID False Positive",
+        "evidence": "1769920540502x490793...",
+        "file": "data/scans\\scan_20260201_073619_0.json",
+        "reason": "Bubble session IDs are not secrets"
+      },
+      {
+        "type": "Bubble Session ID False Positive",
+        "evidence": "1769920540502x490793...",
+        "file": "data/scans\\scan_20260201_073619_0.json",
+        "reason": "Bubble session IDs are not secrets"
+      },
+      {
+        "type": "Cookie Security False Positive",
+        "evidence": "amqmalawadhi-85850_u1_testmain...",
+        "file": "data/scans\\scan_20260201_073619_0.json",
+        "reason": "Cookie actually has Secure flag"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260201_073619_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "Bubble Session ID False Positive",
+        "evidence": "1769956588112x568154...",
+        "file": "data/scans\\scan_20260201_173627_0.json",
+        "reason": "Bubble session IDs are not secrets"
+      },
+      {
+        "type": "Bubble Session ID False Positive",
+        "evidence": "1769956588112x568154...",
+        "file": "data/scans\\scan_20260201_173627_0.json",
+        "reason": "Bubble session IDs are not secrets"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260201_173627_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      },
+      {
+        "type": "HTTP/2 False Positive",
+        "evidence": "ALPN negotiated: h2",
+        "file": "data/scans\\scan_20260201_173720_0.json",
+        "reason": "HTTP/2 not actually supported by target"
+      }
+    ],
+    "fabricated_evidence": [],
+    "systematic_issues": [
+      "HTTP/2 detection claims 33 instances but targets don't support HTTP/2"
+    ],
+    "accuracy_metrics": {
+      "total_vulnerabilities": 5760,
+      "secret_vulnerabilities": 4834,
+      "secret_false_positive_rate": 0.33098882912701694,
+      "http2_false_positives": 33,
+      "cookie_issues": 32,
+      "header_issues": 35,
+      "authentic_findings": 60,
+      "false_positive_findings": 51,
+      "fabricated_evidence_count": 0
+    }
+  },
+  "platform_analysis": {
+    "bubble": {
+      "files": 7,
+      "vulns": 80,
+      "accessible": 0
+    },
+    "outsystems": {
+      "files": 10,
+      "vulns": 91,
+      "accessible": 1
+    },
+    "generic": {
+      "files": 1,
+      "vulns": 7,
+      "accessible": 0
+    }
+  },
+  "final_assessment": {
+    "authenticity_score": 54.054054054054056,
+    "total_findings": 111,
+    "verdict": "MODERATE_CONCERNS"
+  }
+}
