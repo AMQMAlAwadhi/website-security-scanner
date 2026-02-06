@@ -49,6 +49,7 @@ class ShopifyAnalyzer(GenericWebAnalyzer):
         assets = self._detect_shopify_assets(html_content)
         tokens = self._detect_storefront_tokens(js_content)
         public_json = self._detect_public_json_endpoints(html_content + "\n" + js_content)
+        checkout_tokens = self._detect_checkout_api_tokens(html_content)
 
         if tokens:
             for token in tokens:
@@ -84,9 +85,27 @@ class ShopifyAnalyzer(GenericWebAnalyzer):
                     cwe=["CWE-200"],
                 )
 
+        if checkout_tokens:
+            for token in checkout_tokens:
+                evidence = EvidenceBuilder.exact_match(
+                    token,
+                    "Checkout API token exposed in markup",
+                )
+                self.add_enriched_vulnerability(
+                    "Shopify Checkout API Token Exposure",
+                    "Medium",
+                    "Checkout API token appears in client-side markup.",
+                    evidence,
+                    "Review token scope and rotate if unnecessary; avoid embedding sensitive tokens in client code.",
+                    category="API Security",
+                    owasp="A02:2021 - Cryptographic Failures",
+                    cwe=["CWE-798", "CWE-200"],
+                )
+
         self.findings["shopify_assets"] = assets
         self.findings["storefront_tokens"] = tokens
         self.findings["public_json_endpoints"] = public_json
+        self.findings["checkout_tokens"] = checkout_tokens
 
         results["shopify_findings"] = self.findings
         results["vulnerabilities"] = self.vulnerabilities
@@ -114,3 +133,11 @@ class ShopifyAnalyzer(GenericWebAnalyzer):
             if endpoint in content:
                 found.append(endpoint)
         return found
+
+    def _detect_checkout_api_tokens(self, html_content: str) -> List[str]:
+        tokens = []
+        matches = re.findall(r'shopify-checkout-api-token["\']?\s*content=["\']([^"\']+)["\']', html_content, re.IGNORECASE)
+        for token in matches:
+            if token and token not in tokens:
+                tokens.append(token)
+        return tokens

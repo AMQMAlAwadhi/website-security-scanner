@@ -127,6 +127,8 @@ def transform_results_for_professional_report(raw_results):
             "verification_summary": raw_results.get("verification_summary", {}),
             "evidence_verification_summary": raw_results.get("evidence_verification_summary", {}),
             "scan_profile": raw_results.get("scan_profile", {}),
+            "scan_profile_hash": raw_results.get("scan_profile_hash", "N/A"),
+            "dataset_version": raw_results.get("dataset_version", "N/A"),
             "git_commit": raw_results.get("git_commit", "N/A"),
         },
         "platform_analysis": {

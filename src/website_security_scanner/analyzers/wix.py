@@ -37,6 +37,7 @@ class WixAnalyzer(GenericWebAnalyzer):
 
         markers = self._detect_wix_markers(html_content + "\n" + js_content)
         api_endpoints = self._detect_wix_api_endpoints(html_content + "\n" + js_content)
+        collections = self._detect_wix_data_collections(html_content + "\n" + js_content)
 
         for endpoint in api_endpoints:
             evidence = EvidenceBuilder.exact_match(
@@ -54,8 +55,25 @@ class WixAnalyzer(GenericWebAnalyzer):
                 cwe=["CWE-200"],
             )
 
+        for collection in collections:
+            evidence = EvidenceBuilder.exact_match(
+                collection,
+                "Wix data collection referenced in client code",
+            )
+            self.add_enriched_vulnerability(
+                "Wix Data Collection Exposure",
+                "Info",
+                f"Wix data collection referenced in client code: {collection}",
+                evidence,
+                "Review collection permissions and ensure access controls are enforced.",
+                category="Information Disclosure",
+                owasp="A01:2021 - Broken Access Control",
+                cwe=["CWE-200"],
+            )
+
         self.findings["wix_markers"] = markers
         self.findings["wix_api_endpoints"] = api_endpoints
+        self.findings["wix_collections"] = collections
 
         results["wix_findings"] = self.findings
         results["vulnerabilities"] = self.vulnerabilities
@@ -75,3 +93,11 @@ class WixAnalyzer(GenericWebAnalyzer):
             if endpoint not in endpoints:
                 endpoints.append(endpoint)
         return endpoints
+
+    def _detect_wix_data_collections(self, content: str) -> List[str]:
+        collections = []
+        matches = re.findall(r'wixData\.query\(["\']([^"\']+)["\']', content, re.IGNORECASE)
+        for name in matches:
+            if name not in collections:
+                collections.append(name)
+        return collections

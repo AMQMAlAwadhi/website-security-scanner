@@ -126,6 +126,7 @@ def register_routes(app):
         verify_vulns = data.get('verify_vulnerabilities', False)
         deep_scan = data.get('deep_scan', False)
         api_discovery = data.get('api_discovery', False)
+        scan_profile = data.get('scan_profile', {})
         
         if not url:
             return jsonify({'error': 'URL is required'}), 400
@@ -138,6 +139,7 @@ def register_routes(app):
             'verify': verify_vulns,
             'deep_scan': deep_scan,
             'api_discovery': api_discovery,
+            'scan_profile': scan_profile,
             'status': 'queued',
             'created_at': datetime.now().isoformat(),
             'progress': 0
@@ -164,6 +166,7 @@ def register_routes(app):
         verify_vulns = data.get('verify_vulnerabilities', False)
         deep_scan = data.get('deep_scan', False)
         api_discovery = data.get('api_discovery', False)
+        scan_profile = data.get('scan_profile', {})
         
         if not urls:
             return jsonify({'error': 'URLs list is required'}), 400
@@ -180,6 +183,7 @@ def register_routes(app):
                 'verify': verify_vulns,
                 'deep_scan': deep_scan,
                 'api_discovery': api_discovery,
+                'scan_profile': scan_profile,
                 'status': 'queued',
                 'created_at': datetime.now().isoformat(),
                 'progress': 0
@@ -412,6 +416,13 @@ def execute_scan(app, socketio, scan_id):
         verify = scan_job.get('verify', False)
         deep_scan = scan_job.get('deep_scan', False)
         api_discovery = scan_job.get('api_discovery', False)
+        scan_profile = scan_job.get('scan_profile', {})
+
+        # Update scan profile for this scan
+        if scan_profile:
+            app.scanner.update_scan_profile(**scan_profile)
+            if 'verify_ssl' in scan_profile:
+                app.scanner.verify_ssl = bool(scan_profile.get('verify_ssl', True))
         
         # Update progress
         socketio.emit('scan_update', {

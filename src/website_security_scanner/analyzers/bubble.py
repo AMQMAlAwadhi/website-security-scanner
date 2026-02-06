@@ -157,7 +157,8 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                     "https://portswigger.net/web-security/cross-site-scripting"
                 ],
                 parameter=vuln.get('parameter', ''),
-                url=vuln.get('url', url)
+                url=vuln.get('url', url),
+                http_response=vuln.get('response')
             )
 
         # DOM-based XSS Detection
@@ -180,7 +181,8 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                     "https://portswigger.net/web-security/cross-site-scripting/dom-based"
                 ],
                 parameter=vuln.get('parameter', ''),
-                url=vuln.get('url', url)
+                url=vuln.get('url', url),
+                http_response=vuln.get('response')
             )
 
         # SQL Injection Detection
@@ -205,7 +207,8 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                         "https://portswigger.net/web-security/sql-injection"
                     ],
                     parameter=vuln.get('parameter', ''),
-                    url=vuln.get('url', url)
+                    url=vuln.get('url', url),
+                    http_response=vuln.get('response')
                 )
             elif vuln['type'] == 'SQL Error Disclosure':
                 self.add_enriched_vulnerability(
@@ -223,7 +226,8 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                         "https://cwe.mitre.org/data/definitions/209.html",
                         "https://owasp.org/www-project-web-security-testing-guide/"
                     ],
-                    url=vuln.get('url', url)
+                    url=vuln.get('url', url),
+                    http_response=vuln.get('response')
                 )
 
         # CSRF Detection
@@ -247,7 +251,8 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                         "https://cwe.mitre.org/data/definitions/352.html",
                         "https://portswigger.net/web-security/csrf"
                     ],
-                    url=vuln.get('url', url)
+                    url=vuln.get('url', url),
+                    http_response=vuln.get('response')
                 )
             elif vuln['type'] == 'Weak CSRF Protection':
                 evidence = f"Form: {vuln['form_method']} {vuln['form_action']}, Issue: {vuln['issue']}"
@@ -266,7 +271,8 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                         "https://owasp.org/www-community/attacks/csrf",
                         "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite"
                     ],
-                    url=vuln.get('url', url)
+                    url=vuln.get('url', url),
+                    http_response=vuln.get('response')
                 )
             elif vuln['type'] == 'API CSRF Vulnerability':
                 evidence = f"Method: {vuln['method']}, Issue: {vuln['issue']}"
@@ -284,7 +290,8 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                     references=[
                         "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html"
                     ],
-                    url=vuln.get('url', url)
+                    url=vuln.get('url', url),
+                    http_response=vuln.get('response')
                 )
 
         # Open Redirect Detection - CRITICAL for Bubble (102 instances in Burp)
@@ -308,7 +315,8 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                         "https://owasp.org/www-project-web-security-testing-guide/"
                     ],
                     parameter=vuln.get('parameter', ''),
-                    url=vuln.get('url', url)
+                    url=vuln.get('url', url),
+                    http_response=vuln.get('response')
                 )
             elif vuln['type'] == 'Open Redirect via Meta Refresh':
                 self.add_enriched_vulnerability(
@@ -325,7 +333,8 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                     references=[
                         "https://cwe.mitre.org/data/definitions/601.html"
                     ],
-                    url=vuln.get('url', url)
+                    url=vuln.get('url', url),
+                    http_response=vuln.get('response')
                 )
             elif vuln['type'] == 'Potential Open Redirect via JavaScript':
                 self.add_enriched_vulnerability(
@@ -342,7 +351,8 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                     references=[
                         "https://cwe.mitre.org/data/definitions/601.html"
                     ],
-                    url=vuln.get('url', url)
+                    url=vuln.get('url', url),
+                    http_response=vuln.get('response')
                 )
 
         return {
@@ -953,7 +963,8 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                         "Review robots.txt content",
                         category="Information Disclosure",
                         owasp="A09:2021 - Security Logging and Monitoring Failures",
-                        cwe=["CWE-200"]
+                        cwe=["CWE-200"],
+                        http_response=response,
                     )
         except Exception:
             pass

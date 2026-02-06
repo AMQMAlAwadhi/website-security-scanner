@@ -42,8 +42,8 @@ from website_security_scanner.report_generator import ProfessionalReportGenerato
 
 
 class SecurityScannerCLI:
-    def __init__(self):
-        self.scanner = LowCodeSecurityScanner()
+    def __init__(self, scanner=None):
+        self.scanner = scanner or LowCodeSecurityScanner()
         self.report_generator = ProfessionalReportGenerator()
         self.results = []
 
@@ -581,6 +581,50 @@ Examples:
         help="Request timeout in seconds (default: 10)",
     )
     parser.add_argument(
+        "--scan-depth",
+        type=int,
+        default=1,
+        help="Scan depth for link traversal (default: 1)",
+    )
+    parser.add_argument(
+        "--fetch-external-js",
+        action="store_true",
+        help="Fetch external JavaScript assets for secret detection (default: enabled)",
+    )
+    parser.add_argument(
+        "--no-fetch-external-js",
+        action="store_true",
+        help="Disable fetching external JavaScript assets",
+    )
+    parser.add_argument(
+        "--max-external-js",
+        type=int,
+        default=8,
+        help="Maximum external JS assets to fetch (default: 8)",
+    )
+    parser.add_argument(
+        "--min-interval",
+        type=float,
+        default=0.2,
+        help="Minimum interval between requests per host in seconds (default: 0.2)",
+    )
+    parser.add_argument(
+        "--max-rpm",
+        type=int,
+        default=60,
+        help="Maximum requests per minute per host (default: 60)",
+    )
+    parser.add_argument(
+        "--verify-ssl",
+        action="store_true",
+        help="Enable SSL certificate verification",
+    )
+    parser.add_argument(
+        "--no-verify-ssl",
+        action="store_true",
+        help="Disable SSL certificate verification",
+    )
+    parser.add_argument(
         "--delay",
         type=float,
         default=2.0,
@@ -594,7 +638,29 @@ Examples:
     if args.no_color:
         init(strip=True, convert=False)
 
-    cli = SecurityScannerCLI()
+    verify_ssl = True
+    if args.no_verify_ssl:
+        verify_ssl = False
+    elif args.verify_ssl:
+        verify_ssl = True
+
+    fetch_external_js_assets = True
+    if args.no_fetch_external_js:
+        fetch_external_js_assets = False
+    elif args.fetch_external_js:
+        fetch_external_js_assets = True
+
+    scanner = LowCodeSecurityScanner(
+        verify_ssl=verify_ssl,
+        timeout_seconds=args.timeout,
+        scan_depth=args.scan_depth,
+        fetch_external_js_assets=fetch_external_js_assets,
+        max_external_js_assets=args.max_external_js,
+        min_interval_seconds=args.min_interval,
+        max_requests_per_minute=args.max_rpm,
+    )
+
+    cli = SecurityScannerCLI(scanner=scanner)
 
     # Configure scanner based on CLI options
     if args.user_agent:

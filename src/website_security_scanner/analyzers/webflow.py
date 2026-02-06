@@ -36,6 +36,7 @@ class WebflowAnalyzer(GenericWebAnalyzer):
 
         markers = self._detect_webflow_markers(html_content)
         api_endpoints = self._detect_webflow_api_endpoints(html_content + "\n" + js_content)
+        site_ids = self._detect_webflow_site_ids(html_content)
 
         for endpoint in api_endpoints:
             evidence = EvidenceBuilder.exact_match(
@@ -53,8 +54,25 @@ class WebflowAnalyzer(GenericWebAnalyzer):
                 cwe=["CWE-200"],
             )
 
+        for site_id in site_ids:
+            evidence = EvidenceBuilder.exact_match(
+                site_id,
+                "Webflow site identifier exposed in markup",
+            )
+            self.add_enriched_vulnerability(
+                "Webflow Site Identifier Exposure",
+                "Info",
+                "Webflow site identifier is exposed in client markup.",
+                evidence,
+                "Ensure public identifiers do not enable unauthorized access to private CMS content.",
+                category="Information Disclosure",
+                owasp="A01:2021 - Broken Access Control",
+                cwe=["CWE-200"],
+            )
+
         self.findings["webflow_markers"] = markers
         self.findings["webflow_api_endpoints"] = api_endpoints
+        self.findings["webflow_site_ids"] = site_ids
 
         results["webflow_findings"] = self.findings
         results["vulnerabilities"] = self.vulnerabilities
@@ -74,3 +92,11 @@ class WebflowAnalyzer(GenericWebAnalyzer):
             if endpoint not in endpoints:
                 endpoints.append(endpoint)
         return endpoints
+
+    def _detect_webflow_site_ids(self, html_content: str) -> List[str]:
+        site_ids = []
+        matches = re.findall(r'data-wf-site=["\']([a-f0-9]{24})["\']', html_content, re.IGNORECASE)
+        for site_id in matches:
+            if site_id not in site_ids:
+                site_ids.append(site_id)
+        return site_ids

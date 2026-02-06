@@ -155,6 +155,7 @@ class AdvancedChecksMixin:
                             category="Access Control",
                             owasp="A01:2021 - Broken Access Control",
                             cwe=["CWE-284"],
+                            http_response=overridden,
                         )
                         return
 
@@ -357,6 +358,7 @@ class AdvancedChecksMixin:
                 category="Information Disclosure",
                 owasp="A09:2021 - Security Logging and Monitoring Failures",
                 cwe=["CWE-200"],
+                http_response=resp,
             )
 
     def _check_dom_data_manipulation(self, js_content: str):

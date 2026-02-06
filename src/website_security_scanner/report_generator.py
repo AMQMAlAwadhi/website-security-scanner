@@ -574,6 +574,8 @@ Known limitations include dependency on live responses, platform-specific heuris
         md = results.get('scan_metadata', {})
         profile = md.get('scan_profile', {})
         commit = md.get('git_commit', 'N/A')
+        profile_hash = md.get('scan_profile_hash', 'N/A')
+        dataset_version = md.get('dataset_version', 'N/A')
 
         # Evidence hash list
         vulns = results.get('security_assessment', {}).get('vulnerabilities', [])
@@ -591,6 +593,8 @@ Known limitations include dependency on live responses, platform-specific heuris
 <table class=\"overview_table\">
   <tr><td class=\"label\">Scanner Version</td><td>{md.get('scanner_version','N/A')}</td></tr>
   <tr><td class=\"label\">Git Commit</td><td>{commit}</td></tr>
+  <tr><td class=\"label\">Scan Profile Hash</td><td>{profile_hash}</td></tr>
+  <tr><td class=\"label\">Dataset Version</td><td>{dataset_version}</td></tr>
   <tr><td class=\"label\">Scan Profile</td><td>{self._escape_html(json.dumps(profile))}</td></tr>
   <tr><td class=\"label\">Evidence Hashes</td><td>{self._escape_html(hash_display or 'N/A')}</td></tr>
 </table>

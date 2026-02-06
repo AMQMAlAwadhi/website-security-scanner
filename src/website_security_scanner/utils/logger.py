@@ -159,14 +159,14 @@ class ScannerLogger:
         """Get the configured logger instance."""
         return self.logger
     
-    def log_scan_start(self, url: str, platform: str):
+    def log_scan_start(self, url: str, platform: str, scan_id: Optional[str] = None):
         """Log scan start with context."""
         self.logger.info(
             f"Starting security scan: URL={url}, Platform={platform}",
-            extra={"extra_data": {"url": url, "platform": platform, "event": "scan_start"}}
+            extra={"extra_data": {"url": url, "platform": platform, "event": "scan_start", "scan_id": scan_id}}
         )
     
-    def log_scan_complete(self, url: str, vulnerability_count: int, duration: float):
+    def log_scan_complete(self, url: str, vulnerability_count: int, duration: float, scan_id: Optional[str] = None):
         """Log scan completion with metrics."""
         self.logger.info(
             f"Scan completed: URL={url}, Vulnerabilities={vulnerability_count}, Duration={duration:.2f}s",
@@ -175,7 +175,8 @@ class ScannerLogger:
                     "url": url,
                     "vulnerability_count": vulnerability_count,
                     "duration": duration,
-                    "event": "scan_complete"
+                    "event": "scan_complete",
+                    "scan_id": scan_id
                 }
             }
         )

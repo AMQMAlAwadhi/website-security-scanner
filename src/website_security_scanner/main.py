@@ -19,6 +19,8 @@ import socket
 import ssl
 import time
 import warnings
+import hashlib
+import uuid
 from datetime import datetime
 from typing import List, Dict, Any
 from urllib.parse import urljoin, urlparse
@@ -42,14 +44,30 @@ from .report_generator import ProfessionalReportGenerator
 from .result_transformer import transform_results_for_professional_report
 from .utils.platform_detector import AdvancedPlatformDetector
 from .utils.evidence_verifier import verify_vulnerabilities
+from .utils.rate_limiter import RateLimiter, ThrottledSession
 from .models.vulnerability import EnhancedVulnerability, ScanResult
 from .plugins.plugin_manager import PluginManager
 from .utils.parallel_scanner import ParallelScanner, create_parallel_scan
 
 
 class LowCodeSecurityScanner:
-    def __init__(self, enable_plugins: bool = True, enable_parallel: bool = True, verify_ssl: bool = True):
-        self.session = requests.Session()
+    def __init__(
+        self,
+        enable_plugins: bool = True,
+        enable_parallel: bool = True,
+        verify_ssl: bool = True,
+        timeout_seconds: int = 10,
+        scan_depth: int = 1,
+        fetch_external_js_assets: bool = True,
+        max_external_js_assets: int = 8,
+        min_interval_seconds: float = 0.2,
+        max_requests_per_minute: int = 60,
+    ):
+        rate_limiter = RateLimiter(
+            min_interval_seconds=min_interval_seconds,
+            max_requests_per_minute=max_requests_per_minute,
+        )
+        self.session = ThrottledSession(rate_limiter)
         self.session.headers.update(
             {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -71,13 +89,16 @@ class LowCodeSecurityScanner:
 
         # Reproducible scan profile metadata
         self.scan_profile = {
-            "timeout_seconds": 10,
+            "timeout_seconds": int(timeout_seconds),
             "verify_ssl": verify_ssl,
             "enable_plugins": enable_plugins,
             "enable_parallel": enable_parallel,
             "active_verification": True,
-            "scan_depth": 1,
-            "fetch_external_js_assets": True,
+            "scan_depth": int(scan_depth),
+            "fetch_external_js_assets": bool(fetch_external_js_assets),
+            "max_external_js_assets": int(max_external_js_assets),
+            "min_interval_seconds": float(min_interval_seconds),
+            "max_requests_per_minute": int(max_requests_per_minute),
         }
         
         if enable_plugins:
@@ -88,9 +109,14 @@ class LowCodeSecurityScanner:
 
     def scan_target(self, url):
         """Main scanning function for a target URL"""
+        scan_id = f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+        scan_profile_hash = hashlib.sha256(
+            json.dumps(self.scan_profile, sort_keys=True).encode("utf-8")
+        ).hexdigest()
         print(f"\n[+] Starting security scan for: {url}")
 
         target_results = {
+            "scan_id": scan_id,
             "url": url,
             "timestamp": datetime.now().isoformat(),
             "platform_type": self.identify_platform(url),
@@ -106,12 +132,18 @@ class LowCodeSecurityScanner:
             "recommendations": [],
             "platform_detection": self._last_platform_detection or {},
             "scan_profile": self.scan_profile,
+            "scan_profile_hash": scan_profile_hash,
+            "dataset_version": os.environ.get("DATASET_VERSION", "N/A"),
             "git_commit": os.environ.get("GIT_COMMIT", "N/A"),
         }
 
         try:
             # Basic connectivity and platform identification
-            response = self.session.get(url, timeout=self.scan_profile["timeout_seconds"], verify=self.verify_ssl)
+            response = self.session.get(
+                url,
+                timeout=self.scan_profile["timeout_seconds"],
+                verify=self.verify_ssl,
+            )
             target_results["status_code"] = response.status_code
             target_results["response_time"] = response.elapsed.total_seconds()
 
@@ -411,6 +443,7 @@ class LowCodeSecurityScanner:
         print("[+] Analyzing Bubble.io application using BubbleAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
         analyzer = BubbleAnalyzer(self.session)
+        self._apply_scan_profile_to_analyzer(analyzer)
         results = analyzer.analyze(url, response, soup)
 
         # Perform active verification of found vulnerabilities
@@ -443,6 +476,7 @@ class LowCodeSecurityScanner:
         print("[+] Analyzing OutSystems application using OutSystemsAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
         analyzer = OutSystemsAnalyzer(self.session)
+        self._apply_scan_profile_to_analyzer(analyzer)
         results = analyzer.analyze(url, response, soup)
 
         # Perform active verification of found vulnerabilities
@@ -473,6 +507,7 @@ class LowCodeSecurityScanner:
         print("[+] Analyzing Airtable application using AirtableAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
         analyzer = AirtableAnalyzer(self.session)
+        self._apply_scan_profile_to_analyzer(analyzer)
         results = analyzer.analyze(url, response, soup)
 
         # Perform active verification of found vulnerabilities
@@ -503,6 +538,7 @@ class LowCodeSecurityScanner:
         print("[+] Performing generic security analysis using GenericWebAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
         analyzer = GenericWebAnalyzer(self.session)
+        self._apply_scan_profile_to_analyzer(analyzer)
         results = analyzer.analyze(url, response, soup)
 
         # Perform active verification of found vulnerabilities
@@ -529,6 +565,7 @@ class LowCodeSecurityScanner:
         print("[+] Analyzing Shopify application using ShopifyAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
         analyzer = ShopifyAnalyzer(self.session)
+        self._apply_scan_profile_to_analyzer(analyzer)
         results = analyzer.analyze(url, response, soup)
 
         verification_summary = analyzer.verify_vulnerabilities(url)
@@ -552,6 +589,7 @@ class LowCodeSecurityScanner:
         print("[+] Analyzing Webflow application using WebflowAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
         analyzer = WebflowAnalyzer(self.session)
+        self._apply_scan_profile_to_analyzer(analyzer)
         results = analyzer.analyze(url, response, soup)
 
         verification_summary = analyzer.verify_vulnerabilities(url)
@@ -575,6 +613,7 @@ class LowCodeSecurityScanner:
         print("[+] Analyzing Wix application using WixAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
         analyzer = WixAnalyzer(self.session)
+        self._apply_scan_profile_to_analyzer(analyzer)
         results = analyzer.analyze(url, response, soup)
 
         verification_summary = analyzer.verify_vulnerabilities(url)
@@ -598,6 +637,7 @@ class LowCodeSecurityScanner:
         print("[+] Analyzing Mendix application using MendixAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
         analyzer = MendixAnalyzer(self.session)
+        self._apply_scan_profile_to_analyzer(analyzer)
         results = analyzer.analyze(url, response, soup)
 
         verification_summary = analyzer.verify_vulnerabilities(url)
@@ -660,6 +700,22 @@ class LowCodeSecurityScanner:
             )
 
         return vulnerabilities
+
+    def _apply_scan_profile_to_analyzer(self, analyzer) -> None:
+        """Apply scan profile settings to analyzer instances."""
+        analyzer.fetch_external_js_assets = self.scan_profile.get("fetch_external_js_assets", True)
+        analyzer.max_external_js_assets = self.scan_profile.get("max_external_js_assets", 8)
+
+    def update_scan_profile(self, **kwargs) -> None:
+        """Update scan profile values for the current scanner instance."""
+        for key, value in kwargs.items():
+            if value is not None:
+                self.scan_profile[key] = value
+        if hasattr(self.session, "update_rate_limits"):
+            self.session.update_rate_limits(
+                min_interval_seconds=self.scan_profile.get("min_interval_seconds"),
+                max_requests_per_minute=self.scan_profile.get("max_requests_per_minute"),
+            )
 
     def check_bubble_vulnerabilities(self, url, soup):
         """Check for Bubble.io specific vulnerabilities"""

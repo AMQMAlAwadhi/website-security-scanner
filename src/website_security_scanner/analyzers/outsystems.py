@@ -180,7 +180,8 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                     "https://portswigger.net/web-security/cross-site-scripting"
                 ],
                 parameter=vuln.get('parameter', ''),
-                url=vuln.get('url', url)
+                url=vuln.get('url', url),
+                http_response=vuln.get('response')
             )
 
         # DOM-based XSS Detection
@@ -203,7 +204,8 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                     "https://portswigger.net/web-security/cross-site-scripting/dom-based"
                 ],
                 parameter=vuln.get('parameter', ''),
-                url=vuln.get('url', url)
+                url=vuln.get('url', url),
+                http_response=vuln.get('response')
             )
 
         # SQL Injection Detection
@@ -228,7 +230,8 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                         "https://portswigger.net/web-security/sql-injection"
                     ],
                     parameter=vuln.get('parameter', ''),
-                    url=vuln.get('url', url)
+                    url=vuln.get('url', url),
+                    http_response=vuln.get('response')
                 )
             elif vuln['type'] == 'SQL Error Disclosure':
                 self.add_enriched_vulnerability(
@@ -246,7 +249,8 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                         "https://cwe.mitre.org/data/definitions/209.html",
                         "https://owasp.org/www-project-web-security-testing-guide/"
                     ],
-                    url=vuln.get('url', url)
+                    url=vuln.get('url', url),
+                    http_response=vuln.get('response')
                 )
 
         # CSRF Detection
@@ -270,7 +274,8 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                         "https://cwe.mitre.org/data/definitions/352.html",
                         "https://portswigger.net/web-security/csrf"
                     ],
-                    url=vuln.get('url', url)
+                    url=vuln.get('url', url),
+                    http_response=vuln.get('response')
                 )
             elif vuln['type'] == 'Weak CSRF Protection':
                 evidence = f"Form: {vuln['form_method']} {vuln['form_action']}, Issue: {vuln['issue']}"
@@ -289,7 +294,8 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                         "https://owasp.org/www-community/attacks/csrf",
                         "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite"
                     ],
-                    url=vuln.get('url', url)
+                    url=vuln.get('url', url),
+                    http_response=vuln.get('response')
                 )
             elif vuln['type'] == 'API CSRF Vulnerability':
                 evidence = f"Method: {vuln['method']}, Issue: {vuln['issue']}"
@@ -307,7 +313,8 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                     references=[
                         "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html"
                     ],
-                    url=vuln.get('url', url)
+                    url=vuln.get('url', url),
+                    http_response=vuln.get('response')
                 )
 
         # Open Redirect Detection
@@ -331,7 +338,8 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                         "https://owasp.org/www-project-web-security-testing-guide/"
                     ],
                     parameter=vuln.get('parameter', ''),
-                    url=vuln.get('url', url)
+                    url=vuln.get('url', url),
+                    http_response=vuln.get('response')
                 )
             elif vuln['type'] == 'Open Redirect via Meta Refresh':
                 self.add_enriched_vulnerability(
@@ -348,7 +356,8 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                     references=[
                         "https://cwe.mitre.org/data/definitions/601.html"
                     ],
-                    url=vuln.get('url', url)
+                    url=vuln.get('url', url),
+                    http_response=vuln.get('response')
                 )
             elif vuln['type'] == 'Potential Open Redirect via JavaScript':
                 self.add_enriched_vulnerability(
@@ -365,7 +374,8 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                     references=[
                         "https://cwe.mitre.org/data/definitions/601.html"
                     ],
-                    url=vuln.get('url', url)
+                    url=vuln.get('url', url),
+                    http_response=vuln.get('response')
                 )
 
         return {
@@ -636,7 +646,8 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                     cwe=["CWE-644"],
                     background="Host header injection occurs when an application incorrectly handles the Host header or related headers like X-Forwarded-Host. Attackers can use this to manipulate links generated by the application.",
                     impact="Can lead to web cache poisoning, password reset poisoning, and redirection to malicious sites.",
-                    references=["https://portswigger.net/web-security/host-header-injection"]
+                    references=["https://portswigger.net/web-security/host-header-injection"],
+                    http_response=resp,
                 )
         except Exception:
             pass

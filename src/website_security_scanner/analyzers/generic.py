@@ -406,7 +406,8 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                         "Review robots.txt content",
                         category="Information Disclosure",
                         owasp="A09:2021 - Security Logging and Monitoring Failures",
-                        cwe=["CWE-200"]
+                        cwe=["CWE-200"],
+                        http_response=response,
                     )
         except Exception:
             pass

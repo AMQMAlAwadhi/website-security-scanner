@@ -15,6 +15,7 @@ from .utils import (
     calculate_security_score,
 )
 from .evidence_verifier import EvidenceVerifier, verify_vulnerabilities
+from .rate_limiter import RateLimiter, ThrottledSession
 
 __all__ = [
     "setup_scanner_logger",
@@ -26,4 +27,6 @@ __all__ = [
     "calculate_security_score",
     "EvidenceVerifier",
     "verify_vulnerabilities",
+    "RateLimiter",
+    "ThrottledSession",
 ]

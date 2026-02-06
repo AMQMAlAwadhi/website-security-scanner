@@ -36,6 +36,7 @@ class MendixAnalyzer(GenericWebAnalyzer):
 
         markers = self._detect_mendix_markers(html_content + "\n" + js_content)
         rest_endpoints = self._detect_mendix_rest_endpoints(html_content + "\n" + js_content)
+        model_metadata = self._detect_mendix_model_metadata(html_content + "\n" + js_content)
 
         for endpoint in rest_endpoints:
             evidence = EvidenceBuilder.exact_match(
@@ -53,8 +54,25 @@ class MendixAnalyzer(GenericWebAnalyzer):
                 cwe=["CWE-200", "CWE-306"],
             )
 
+        for meta in model_metadata:
+            evidence = EvidenceBuilder.exact_match(
+                meta,
+                "Mendix model metadata reference in client content",
+            )
+            self.add_enriched_vulnerability(
+                "Mendix Model Metadata Exposure",
+                "Info",
+                "Mendix model metadata appears referenced in client content.",
+                evidence,
+                "Review whether model metadata should be publicly accessible.",
+                category="Information Disclosure",
+                owasp="A04:2021 - Insecure Design",
+                cwe=["CWE-200"],
+            )
+
         self.findings["mendix_markers"] = markers
         self.findings["mendix_rest_endpoints"] = rest_endpoints
+        self.findings["mendix_model_metadata"] = model_metadata
 
         results["mendix_findings"] = self.findings
         results["vulnerabilities"] = self.vulnerabilities
@@ -74,3 +92,11 @@ class MendixAnalyzer(GenericWebAnalyzer):
             if endpoint not in endpoints:
                 endpoints.append(endpoint)
         return endpoints
+
+    def _detect_mendix_model_metadata(self, content: str) -> List[str]:
+        metadata = []
+        matches = re.findall(r'mxclientsystem/(?:.*?)/([^"\']+\.json)', content, re.IGNORECASE)
+        for item in matches:
+            if item not in metadata:
+                metadata.append(item)
+        return metadata
