@@ -1,0 +1,21 @@
+{
+  "analysis_timestamp": "2026-02-06T05:59:18.593527",
+  "scan_files_analyzed": 33,
+  "timestamp_issues": 27,
+  "evidence_analysis": {
+    "total_evidence": 5646,
+    "evidence_patterns": {
+      "bubble_session_id": 14,
+      "cookie_evidence": 38,
+      "http2_evidence": 32,
+      "other": 5539,
+      "header_evidence": 23
+    },
+    "duplicate_evidence_across_files": 422,
+    "bubble_session_evidence": 14,
+    "http2_evidence": 32
+  },
+  "scan_anomalies": 3,
+  "total_concerns": 33,
+  "verdict": "🚨 HIGH CONCERNS - Metadata indicates systematic issues"
+}
