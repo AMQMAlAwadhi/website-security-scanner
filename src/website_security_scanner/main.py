@@ -13,6 +13,7 @@ Author: Bachelor Thesis Project
 
 import concurrent.futures
 import json
+import os
 import re
 import socket
 import ssl
@@ -30,6 +31,10 @@ from .analyzers import (
     BubbleAnalyzer,
     GenericWebAnalyzer,
     OutSystemsAnalyzer,
+    ShopifyAnalyzer,
+    WebflowAnalyzer,
+    WixAnalyzer,
+    MendixAnalyzer,
     get_analyzer_for_platform,
     analyze_platform_security,
 )
@@ -58,10 +63,22 @@ class LowCodeSecurityScanner:
         
         self.results = {}
         self.platform_detector = AdvancedPlatformDetector(self.session)
+        self._last_platform_detection = {}
         
         # Advanced features
         self.enable_plugins = enable_plugins
         self.enable_parallel = enable_parallel
+
+        # Reproducible scan profile metadata
+        self.scan_profile = {
+            "timeout_seconds": 10,
+            "verify_ssl": verify_ssl,
+            "enable_plugins": enable_plugins,
+            "enable_parallel": enable_parallel,
+            "active_verification": True,
+            "scan_depth": 1,
+            "fetch_external_js_assets": True,
+        }
         
         if enable_plugins:
             self.plugin_manager = PluginManager()
@@ -87,11 +104,14 @@ class LowCodeSecurityScanner:
             "api_endpoints": [],
             "forms_analysis": [],
             "recommendations": [],
+            "platform_detection": self._last_platform_detection or {},
+            "scan_profile": self.scan_profile,
+            "git_commit": os.environ.get("GIT_COMMIT", "N/A"),
         }
 
         try:
             # Basic connectivity and platform identification
-            response = self.session.get(url, timeout=10, verify=self.verify_ssl)
+            response = self.session.get(url, timeout=self.scan_profile["timeout_seconds"], verify=self.verify_ssl)
             target_results["status_code"] = response.status_code
             target_results["response_time"] = response.elapsed.total_seconds()
 
@@ -110,6 +130,14 @@ class LowCodeSecurityScanner:
                 target_results.update(self.analyze_outsystems_app(url, response))
             elif target_results["platform_type"] == "airtable":
                 target_results.update(self.analyze_airtable_app(url, response))
+            elif target_results["platform_type"] == "shopify":
+                target_results.update(self.analyze_shopify_app(url, response))
+            elif target_results["platform_type"] == "webflow":
+                target_results.update(self.analyze_webflow_app(url, response))
+            elif target_results["platform_type"] == "wix":
+                target_results.update(self.analyze_wix_app(url, response))
+            elif target_results["platform_type"] == "mendix":
+                target_results.update(self.analyze_mendix_app(url, response))
             else:
                 target_results.update(self.analyze_generic_app(url, response))
 
@@ -226,6 +254,22 @@ class LowCodeSecurityScanner:
                 'common_issues': ['Base ID exposure', 'API key exposure', 'Permission bypass'],
                 'risk_level': 'Low'
             },
+            'shopify': {
+                'common_issues': ['Storefront token exposure', 'Public JSON endpoints'],
+                'risk_level': 'Medium'
+            },
+            'webflow': {
+                'common_issues': ['Public API endpoints', 'Form security gaps'],
+                'risk_level': 'Low'
+            },
+            'wix': {
+                'common_issues': ['Exposed API endpoints', 'Information disclosure'],
+                'risk_level': 'Low'
+            },
+            'mendix': {
+                'common_issues': ['Exposed REST endpoints', 'Access control issues'],
+                'risk_level': 'Medium'
+            },
             'generic': {
                 'common_issues': ['Missing security headers', 'XSS', 'SQL Injection'],
                 'risk_level': 'High'
@@ -256,6 +300,7 @@ class LowCodeSecurityScanner:
         try:
             # Use advanced platform detection
             detection_result = self.platform_detector.detect_platform_advanced(url)
+            self._last_platform_detection = detection_result
             
             # Apply confidence gating
             platform, confidence = self.platform_detector.get_primary_platform(detection_result)
@@ -272,6 +317,7 @@ class LowCodeSecurityScanner:
                 
         except Exception as e:
             print(f"[!] Platform detection failed: {e}")
+            self._last_platform_detection = {"error": str(e), "detected_platforms": ["unknown"], "confidence_scores": {"unknown": 0}}
             return self._basic_platform_identification(url)
     
     def _basic_platform_identification(self, url):
@@ -286,6 +332,14 @@ class LowCodeSecurityScanner:
                 return 'outsystems'
             elif 'airtable.com' in content or 'app[a-zA-Z0-9]{15}' in content:
                 return 'airtable'
+            elif 'myshopify.com' in content or 'cdn.shopify.com' in content:
+                return 'shopify'
+            elif 'webflow' in content or 'data-wf-site' in content:
+                return 'webflow'
+            elif 'wixstatic.com' in content or 'parastorage.com' in content:
+                return 'wix'
+            elif 'mxclientsystem' in content or 'mendix' in content:
+                return 'mendix'
             else:
                 return 'generic'
         except:
@@ -465,6 +519,98 @@ class LowCodeSecurityScanner:
 
         return {
             "generic_analysis": results.get("generic_findings", {}),
+            "vulnerabilities": results.get("vulnerabilities", []),
+            "verification_summary": verification_summary,
+            "evidence_verification_summary": results.get("evidence_verification_summary", {}),
+        }
+
+    def analyze_shopify_app(self, url, response):
+        """Shopify analysis with evidence verification."""
+        print("[+] Analyzing Shopify application using ShopifyAnalyzer...")
+        soup = BeautifulSoup(response.content, "html.parser")
+        analyzer = ShopifyAnalyzer(self.session)
+        results = analyzer.analyze(url, response, soup)
+
+        verification_summary = analyzer.verify_vulnerabilities(url)
+        vulnerabilities = results.get("vulnerabilities", [])
+        if vulnerabilities:
+            verified_vulns, evidence_summary = verify_vulnerabilities(
+                vulnerabilities, self.session, url, response
+            )
+            results["vulnerabilities"] = verified_vulns
+            results["evidence_verification_summary"] = evidence_summary
+
+        return {
+            "shopify_specific": results.get("shopify_findings", {}),
+            "vulnerabilities": results.get("vulnerabilities", []),
+            "verification_summary": verification_summary,
+            "evidence_verification_summary": results.get("evidence_verification_summary", {}),
+        }
+
+    def analyze_webflow_app(self, url, response):
+        """Webflow analysis with evidence verification."""
+        print("[+] Analyzing Webflow application using WebflowAnalyzer...")
+        soup = BeautifulSoup(response.content, "html.parser")
+        analyzer = WebflowAnalyzer(self.session)
+        results = analyzer.analyze(url, response, soup)
+
+        verification_summary = analyzer.verify_vulnerabilities(url)
+        vulnerabilities = results.get("vulnerabilities", [])
+        if vulnerabilities:
+            verified_vulns, evidence_summary = verify_vulnerabilities(
+                vulnerabilities, self.session, url, response
+            )
+            results["vulnerabilities"] = verified_vulns
+            results["evidence_verification_summary"] = evidence_summary
+
+        return {
+            "webflow_specific": results.get("webflow_findings", {}),
+            "vulnerabilities": results.get("vulnerabilities", []),
+            "verification_summary": verification_summary,
+            "evidence_verification_summary": results.get("evidence_verification_summary", {}),
+        }
+
+    def analyze_wix_app(self, url, response):
+        """Wix analysis with evidence verification."""
+        print("[+] Analyzing Wix application using WixAnalyzer...")
+        soup = BeautifulSoup(response.content, "html.parser")
+        analyzer = WixAnalyzer(self.session)
+        results = analyzer.analyze(url, response, soup)
+
+        verification_summary = analyzer.verify_vulnerabilities(url)
+        vulnerabilities = results.get("vulnerabilities", [])
+        if vulnerabilities:
+            verified_vulns, evidence_summary = verify_vulnerabilities(
+                vulnerabilities, self.session, url, response
+            )
+            results["vulnerabilities"] = verified_vulns
+            results["evidence_verification_summary"] = evidence_summary
+
+        return {
+            "wix_specific": results.get("wix_findings", {}),
+            "vulnerabilities": results.get("vulnerabilities", []),
+            "verification_summary": verification_summary,
+            "evidence_verification_summary": results.get("evidence_verification_summary", {}),
+        }
+
+    def analyze_mendix_app(self, url, response):
+        """Mendix analysis with evidence verification."""
+        print("[+] Analyzing Mendix application using MendixAnalyzer...")
+        soup = BeautifulSoup(response.content, "html.parser")
+        analyzer = MendixAnalyzer(self.session)
+        results = analyzer.analyze(url, response, soup)
+
+        verification_summary = analyzer.verify_vulnerabilities(url)
+        vulnerabilities = results.get("vulnerabilities", [])
+        if vulnerabilities:
+            verified_vulns, evidence_summary = verify_vulnerabilities(
+                vulnerabilities, self.session, url, response
+            )
+            results["vulnerabilities"] = verified_vulns
+            results["evidence_verification_summary"] = evidence_summary
+
+        return {
+            "mendix_specific": results.get("mendix_findings", {}),
             "vulnerabilities": results.get("vulnerabilities", []),
             "verification_summary": verification_summary,
             "evidence_verification_summary": results.get("evidence_verification_summary", {}),

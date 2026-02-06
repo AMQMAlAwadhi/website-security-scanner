@@ -31,6 +31,7 @@ class SecretDetector:
             r'^yyy.*$',         # Placeholder values
             r'^\d{4}-\d{4}-\d{4}-\d{4}$',  # Credit card test numbers
             r'^\*+$',           # Masked values
+            r'^\d{10,}x\d{4,}$', # Bubble session-style IDs (e.g., 1769871767269x623725)
         ]
         
         # High-confidence secret patterns
@@ -81,6 +82,32 @@ class SecretDetector:
             'example', 'test', 'demo', 'sample', 'placeholder', 'mock',
             'fake', 'dummy', 'template', 'documentation', 'tutorial'
         ]
+
+        # Platform-specific allow/deny lists (regex patterns)
+        self.platform_denylist_patterns = {
+            'webflow': [
+                r'data-wf-(site|page)',
+                r'webflow\.js',
+            ],
+            'shopify': [
+                r'gid://shopify/',
+                r'"id"\s*:\s*\d{6,}',
+            ],
+            'wix': [
+                r'wixBiSession',
+                r'wixRenderer',
+            ],
+            'mendix': [
+                r'mxclientsystem',
+                r'mxui',
+            ],
+            'bubble': [
+                r'\d{10,}x\d{4,}',
+                r'bubbleapps\.io',
+                r'workflow_session',
+            ],
+        }
+        self.platform_allowlist_types = {'private_key', 'aws_secret', 'github_token'}
     
     def detect_secrets(self, content: str, url: str = '') -> List[Dict[str, Any]]:
         """
@@ -320,6 +347,7 @@ class SecretDetector:
     def _filter_and_rank_secrets(self, secrets: List[Dict[str, Any]], url: str) -> List[Dict[str, Any]]:
         """Filter out false positives and rank remaining secrets."""
         filtered_secrets = []
+        platform = self._detect_platform_from_url(url)
         
         for secret in secrets:
             # Skip unlikely secrets
@@ -333,6 +361,24 @@ class SecretDetector:
             # Additional filtering based on URL context
             if self._is_false_positive_by_url(secret, url):
                 continue
+
+            # Platform-specific denylist
+            if self._is_platform_denylisted(secret, platform):
+                continue
+
+            # Require regex + entropy + context unless allowlisted
+            if secret.get('type') not in self.platform_allowlist_types:
+                detection_method = secret.get('detection_method', '')
+                has_pattern = detection_method == 'pattern'
+                entropy = secret.get('entropy')
+                if entropy is None:
+                    entropy = self._calculate_entropy(secret.get('value', ''))
+                    secret['entropy'] = entropy
+                has_entropy = entropy >= 4.5
+                has_context = self._has_context_signal(secret.get('context', ''))
+
+                if not (has_pattern and has_entropy and has_context):
+                    continue
             
             # Add ranking score
             secret['rank_score'] = self._calculate_rank_score(secret)
@@ -343,6 +389,37 @@ class SecretDetector:
         filtered_secrets.sort(key=lambda x: x['rank_score'], reverse=True)
         
         return filtered_secrets
+
+    def _detect_platform_from_url(self, url: str) -> str:
+        url_lower = (url or '').lower()
+        if 'bubbleapps.io' in url_lower or 'bubble.io' in url_lower:
+            return 'bubble'
+        if 'myshopify.com' in url_lower or 'shopify' in url_lower:
+            return 'shopify'
+        if 'webflow' in url_lower:
+            return 'webflow'
+        if 'wix' in url_lower or 'wixstatic' in url_lower or 'parastorage' in url_lower:
+            return 'wix'
+        if 'mendix' in url_lower or 'mxclientsystem' in url_lower:
+            return 'mendix'
+        return 'generic'
+
+    def _is_platform_denylisted(self, secret: Dict[str, Any], platform: str) -> bool:
+        patterns = self.platform_denylist_patterns.get(platform, [])
+        if not patterns:
+            return False
+        context = secret.get('context', '') or ''
+        for pattern in patterns:
+            if re.search(pattern, context, re.IGNORECASE):
+                return True
+        return False
+
+    def _has_context_signal(self, context: str) -> bool:
+        context_lower = (context or '').lower()
+        for indicator in self.secret_context_indicators:
+            if indicator in context_lower:
+                return True
+        return False
     
     def _is_false_positive_by_url(self, secret: Dict[str, Any], url: str) -> bool:
         """Check if secret is likely false positive based on URL context."""

@@ -55,20 +55,12 @@ class ProfessionalReportGenerator:
                 
                 total_score += score
                 severity_counts[severity] += 1
+                max_possible_score += weight * 1.0
         
-        # Normalize to 0-100 scale
-        if severity_counts['critical'] > 0:
-            max_possible_score = 100.0
-        elif severity_counts['high'] > 0:
-            max_possible_score = 75.0
-        elif severity_counts['medium'] > 0:
-            max_possible_score = 50.0
-        elif severity_counts['low'] > 0:
-            max_possible_score = 25.0
-        else:
-            max_possible_score = 10.0
-        
-        normalized_score = min(100.0, (total_score / max_possible_score) * 100)
+        # Normalize to 0-100 scale using count-weighted maximum
+        normalized_score = 0.0
+        if max_possible_score > 0:
+            normalized_score = min(100.0, (total_score / max_possible_score) * 100)
         
         # Determine risk level
         if normalized_score >= 80:
@@ -143,8 +135,8 @@ class ProfessionalReportGenerator:
         prioritized = sorted(
             vulnerabilities,
             key=lambda v: (
-                -severity_order.index(v.get('severity', 'info').lower()),
-                {'certain': 3, 'firm': 2, 'tentative': 1}.get(v.get('confidence', 'tentative').lower(), 0)
+                severity_order.index(v.get('severity', 'info').lower()),
+                -{'certain': 3, 'firm': 2, 'tentative': 1}.get(v.get('confidence', 'tentative').lower(), 0)
             )
         )
         
@@ -217,6 +209,10 @@ class ProfessionalReportGenerator:
         {self._generate_enhanced_risk_dashboard(chart_data, risk_score)}
         {self._generate_enhanced_remediation_priorities(remediation)}
         {self._generate_metadata_overview(results)}
+        {self._generate_methodology_section(results)}
+        {self._generate_platform_confidence_panel(results)}
+        {self._generate_comparative_tables(results)}
+        {self._generate_report_integrity_block(results)}
         {self._generate_burp_contents(results)}
         {self._generate_platform_specific_findings(results)}
         {self._generate_enhanced_findings(results, remediation)}
@@ -474,6 +470,10 @@ h3 { font-size: 1.1em; color: #404042; margin: 15px 0 10px 0; }
         {self._generate_burp_summary(results)}
         {self._generate_burp_chart_and_matrix(results)}
         {self._generate_metadata_overview(results)}
+        {self._generate_methodology_section(results)}
+        {self._generate_platform_confidence_panel(results)}
+        {self._generate_comparative_tables(results)}
+        {self._generate_report_integrity_block(results)}
         {self._generate_burp_contents(results)}
         {self._generate_platform_specific_findings(results)}
         {self._generate_burp_findings(results)}
@@ -481,6 +481,120 @@ h3 { font-size: 1.1em; color: #404042; margin: 15px 0 10px 0; }
     </div>
 </body>
 </html>"""
+
+    def _generate_methodology_section(self, results):
+        md = results.get('scan_metadata', {})
+        verification = md.get('verification_summary', {})
+        evidence_verification = md.get('evidence_verification_summary', {})
+        total = verification.get('total_vulnerabilities', 0)
+        verified = verification.get('verified_vulnerabilities', 0)
+        rate = verification.get('verification_rate', 0)
+        evidence_rate = evidence_verification.get('verification_rate', 0)
+
+        return f"""
+<div class=\"rule\"></div>
+<h1>Methodology</h1>
+<span class=\"TEXT\">
+This assessment combines static analysis (pattern-based detection, header checks, and code inspection) with optional active verification where safe.
+Verification coverage is reported as the percentage of findings that could be actively rechecked.
+Known limitations include dependency on live responses, platform-specific heuristics, and potential false positives in client-side secret detection.
+</span>
+<br><br>
+<table class=\"overview_table\">
+  <tr><td class=\"label\">Active Verification Coverage</td><td>{rate}% ({verified}/{total})</td></tr>
+  <tr><td class=\"label\">Evidence Verification Coverage</td><td>{evidence_rate}%</td></tr>
+</table>
+"""
+
+    def _generate_platform_confidence_panel(self, results):
+        detection = results.get('platform_analysis', {}).get('platform_detection', {})
+        scores = detection.get('confidence_scores', {})
+        evidence = detection.get('evidence', {})
+        if not scores:
+            return ""
+
+        # Take top 3 platforms
+        sorted_items = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:3]
+        rows = []
+        for platform, score in sorted_items:
+            ev = evidence.get(platform, [])
+            ev_text = "; ".join(ev[:3]) if isinstance(ev, list) else str(ev)
+            rows.append(f"<tr><td>{platform}</td><td>{score}%</td><td>{self._escape_html(ev_text)}</td></tr>")
+
+        return f"""
+<div class=\"rule\"></div>
+<h1>Platform Confidence</h1>
+<table class=\"overview_table\">
+  <tr><td class=\"label\">Platform</td><td class=\"label\">Confidence</td><td class=\"label\">Evidence</td></tr>
+  {''.join(rows)}
+</table>
+"""
+
+    def _generate_comparative_tables(self, results):
+        vulns = results.get('security_assessment', {}).get('vulnerabilities', [])
+        if not vulns:
+            return ""
+
+        # Platform distribution
+        platform_counts = {}
+        for v in vulns:
+            platform = v.get('platform') or results.get('platform_analysis', {}).get('platform_type', 'unknown')
+            platform_counts[platform] = platform_counts.get(platform, 0) + 1
+
+        platform_rows = [
+            f"<tr><td>{p}</td><td>{c}</td></tr>" for p, c in sorted(platform_counts.items(), key=lambda x: x[0])
+        ]
+
+        # OWASP distribution
+        owasp_counts = {}
+        for v in vulns:
+            owasp = v.get('owasp', 'N/A') or 'N/A'
+            owasp_counts[owasp] = owasp_counts.get(owasp, 0) + 1
+
+        owasp_rows = [
+            f"<tr><td>{o}</td><td>{c}</td></tr>" for o, c in sorted(owasp_counts.items(), key=lambda x: x[0])
+        ]
+
+        return f"""
+<div class=\"rule\"></div>
+<h1>Comparative Tables</h1>
+<h2>Vulnerability Distribution by Platform</h2>
+<table class=\"overview_table\">
+  <tr><td class=\"label\">Platform</td><td class=\"label\">Count</td></tr>
+  {''.join(platform_rows)}
+</table>
+<h2>Vulnerability Distribution by OWASP Category</h2>
+<table class=\"overview_table\">
+  <tr><td class=\"label\">OWASP</td><td class=\"label\">Count</td></tr>
+  {''.join(owasp_rows)}
+</table>
+"""
+
+    def _generate_report_integrity_block(self, results):
+        md = results.get('scan_metadata', {})
+        profile = md.get('scan_profile', {})
+        commit = md.get('git_commit', 'N/A')
+
+        # Evidence hash list
+        vulns = results.get('security_assessment', {}).get('vulnerabilities', [])
+        hashes = []
+        for v in vulns:
+            ev = v.get('evidence_verification', {})
+            ev_hash = ev.get('evidence_hash')
+            if ev_hash:
+                hashes.append(ev_hash)
+        hash_display = ", ".join(hashes[:10]) + (f" ... (+{len(hashes)-10} more)" if len(hashes) > 10 else "")
+
+        return f"""
+<div class=\"rule\"></div>
+<h1>Report Integrity</h1>
+<table class=\"overview_table\">
+  <tr><td class=\"label\">Scanner Version</td><td>{md.get('scanner_version','N/A')}</td></tr>
+  <tr><td class=\"label\">Git Commit</td><td>{commit}</td></tr>
+  <tr><td class=\"label\">Scan Profile</td><td>{self._escape_html(json.dumps(profile))}</td></tr>
+  <tr><td class=\"label\">Evidence Hashes</td><td>{self._escape_html(hash_display or 'N/A')}</td></tr>
+</table>
+"""
 
     def _generate_platform_specific_findings(self, results):
         platform_type = results["platform_analysis"]["platform_type"]
@@ -704,9 +818,11 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
             attribution = v.get('attribution', {})
             attr_text = "This issue was generated by UST Professional Security Scanner" + (f" ({attribution.get('module','')}{' ' + attribution.get('version') if attribution.get('version') else ''})" if attribution else "")
             out.append('<table cellpadding="0" cellspacing="0" class="summary_table">')
-            out.append("<tr><td rowspan=\"5\" class=\"icon\" valign=\"top\" align=\"center\"><div class='scan_issue_{}_{}_rpt'></div></td>".format(sev, conf))
+            out.append("<tr><td rowspan=\"6\" class=\"icon\" valign=\"top\" align=\"center\"><div class='scan_issue_{}_{}_rpt'></div></td>".format(sev, conf))
             out.append(f"<td>Severity:&nbsp;&nbsp;</td><td><b>{sev.capitalize()}</b></td></tr>")
             out.append(f"<tr><td>Confidence:&nbsp;&nbsp;</td><td><b>{conf.capitalize()}</b></td></tr>")
+            if v.get('confidence_score') is not None:
+                out.append(f"<tr><td>Confidence Score:&nbsp;&nbsp;</td><td><b>{v.get('confidence_score')}</b> ({v.get('confidence_bucket','')})</td></tr>")
             out.append(f"<tr><td>Host:&nbsp;&nbsp;</td><td><b>{host}</b></td></tr>")
             out.append(f"<tr><td>Path:&nbsp;&nbsp;</td><td><b>{path}</b></td></tr>")
             out.append(f"<tr><td colspan=\"2\"><span class=\"TEXT\">{attr_text}</span></td></tr>")
@@ -785,6 +901,11 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
                 
                 out.append("</span>")
 
+                # Evidence Appendix
+                out.append('<h2>Evidence Appendix</h2>')
+                appendix = self._format_evidence_appendix(v, evidence_verification)
+                out.append(appendix)
+
             # References
             if v.get('references'):
                 out.append('<h2>References</h2>')
@@ -831,6 +952,33 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
         if not vulnerabilities:
             out.append('<p>No vulnerabilities detected.</p>')
         return '\n'.join(out)
+
+    def _format_evidence_appendix(self, vuln: Dict[str, Any], evidence_verification: Dict[str, Any]) -> str:
+        evidence = vuln.get('evidence', [])
+        if not evidence:
+            evidence_text = "No evidence snippet available."
+        else:
+            if isinstance(evidence, list):
+                first = evidence[0]
+            else:
+                first = evidence
+            if isinstance(first, dict):
+                evidence_text = first.get('text') or first.get('pattern') or str(first)
+            else:
+                evidence_text = str(first)
+
+        state = evidence_verification.get('verification_state', 'Unverified')
+        ev_hash = evidence_verification.get('evidence_hash', 'N/A')
+        ev_timestamp = evidence_verification.get('timestamp', 'N/A')
+
+        return f"""
+<span class=\"TEXT\">
+<b>Verification State:</b> {state}<br>
+<b>Evidence Hash:</b> <code>{ev_hash}</code><br>
+<b>Timestamp:</b> {ev_timestamp}<br>
+<b>Evidence Snippet:</b> <code>{self._escape_html(evidence_text)[:200]}</code>
+</span>
+"""
     
     def _generate_footer(self):
         return f"""<div class="rule"></div>
@@ -847,11 +995,7 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
             c = count_by(sev,'certain'); f = count_by(sev,'firm'); t = count_by(sev,'tentative')
             # Use a fixed unit that will result in 820px for high_firm (approximately 410 vulnerabilities)
             unit = 2
-            # Special case for high_firm to force exactly 780px width
-            if sev == 'high' and f > 0:
-                return f"<div style='height:16px;display:flex'><div class='{sev}_certain' style='height:16px;width:{c*unit}px'></div><div class='{sev}_firm' style='height:16px;width:780px'></div><div class='{sev}_tentative' style='height:16px;width:{t*unit}px'></div></div>"
-            else:
-                return f"<div style='height:16px;display:flex'><div class='{sev}_certain' style='height:16px;width:{c*unit}px'></div><div class='{sev}_firm' style='height:16px;width:{f*unit}px'></div><div class='{sev}_tentative' style='height:16px;width:{t*unit}px'></div></div>"
+            return f"<div style='height:16px;display:flex'><div class='{sev}_certain' style='height:16px;width:{c*unit}px'></div><div class='{sev}_firm' style='height:16px;width:{f*unit}px'></div><div class='{sev}_tentative' style='height:16px;width:{t*unit}px'></div></div>"
         rows = []
         rows.append("""
 <table cellpadding="0" cellspacing="0" class="overview_table">
@@ -900,6 +1044,8 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
                 duration = str(e - s)
             except Exception:
                 duration = 'N/A'
+        verification_summary = md.get('verification_summary', {}) or results.get('verification_summary', {})
+        evidence_summary = md.get('evidence_verification_summary', {}) or results.get('evidence_verification_summary', {})
         return f"""
 <div class=\"rule\"></div>
 <h1>Target & Scan Metadata</h1>
@@ -912,6 +1058,11 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
     <tr><td class=\"label\">Scanner Version</td><td>{md.get('scanner_version','N/A')}</td></tr>
     <tr><td class=\"label\">Status Code</td><td>{md.get('status_code','N/A')}</td></tr>
     <tr><td class=\"label\">Response Time</td><td>{md.get('response_time','N/A')} seconds</td></tr>
+    <tr><td class=\"label\">Verification Rate</td><td>{verification_summary.get('verification_rate','N/A')}%</td></tr>
+    <tr><td class=\"label\">Verified Vulnerabilities</td><td>{verification_summary.get('verified_vulnerabilities','N/A')}</td></tr>
+    <tr><td class=\"label\">Evidence Verified</td><td>{evidence_summary.get('verified','N/A')}</td></tr>
+    <tr><td class=\"label\">Evidence Stale</td><td>{evidence_summary.get('stale','N/A')}</td></tr>
+    <tr><td class=\"label\">Evidence Unverified</td><td>{evidence_summary.get('unverified','N/A')}</td></tr>
 </table>
 """
 

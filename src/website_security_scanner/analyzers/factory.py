@@ -16,6 +16,10 @@ from .bubble import BubbleAnalyzer
 from .outsystems import OutSystemsAnalyzer
 from .airtable_enhanced import AirtableAnalyzer
 from .generic import GenericWebAnalyzer
+from .shopify import ShopifyAnalyzer
+from .webflow import WebflowAnalyzer
+from .wix import WixAnalyzer
+from .mendix import MendixAnalyzer
 from .reports import SecurityReportGenerator
 
 
@@ -29,6 +33,14 @@ def get_analyzer_for_platform(platform_type: str, session: requests.Session) -> 
         "outsystems.dev": OutSystemsAnalyzer,
         "airtable": AirtableAnalyzer,
         "airtable.com": AirtableAnalyzer,
+        "shopify": ShopifyAnalyzer,
+        "myshopify.com": ShopifyAnalyzer,
+        "webflow": WebflowAnalyzer,
+        "webflow.io": WebflowAnalyzer,
+        "wix": WixAnalyzer,
+        "wix.com": WixAnalyzer,
+        "mendix": MendixAnalyzer,
+        "mendixcloud.com": MendixAnalyzer,
         "mern": GenericWebAnalyzer,
         "mern-stack": GenericWebAnalyzer,
         "generic": GenericWebAnalyzer,
@@ -68,6 +80,10 @@ def get_supported_platforms() -> list:
         "bubble.io",
         "outsystems", 
         "airtable.com",
+        "shopify",
+        "webflow",
+        "wix",
+        "mendix",
         "generic",
         "mern",
         "mern-stack",
@@ -125,6 +141,47 @@ def get_platform_info(platform_type: str) -> dict:
                 "Cross-site scripting",
                 "SQL injection",
                 "File upload issues",
+            ]
+        },
+        "shopify": {
+            "name": "Shopify",
+            "description": "E-commerce storefront platform",
+            "analyzer": "ShopifyAnalyzer",
+            "common_vulnerabilities": [
+                "Storefront token exposure",
+                "Public JSON endpoints",
+                "Missing security headers",
+                "XSS in custom themes",
+            ]
+        },
+        "webflow": {
+            "name": "Webflow",
+            "description": "Visual web design platform",
+            "analyzer": "WebflowAnalyzer",
+            "common_vulnerabilities": [
+                "Public API endpoints",
+                "Missing CSRF on forms",
+                "XSS in embedded scripts",
+            ]
+        },
+        "wix": {
+            "name": "Wix",
+            "description": "Website builder platform",
+            "analyzer": "WixAnalyzer",
+            "common_vulnerabilities": [
+                "Exposed API endpoints",
+                "Information disclosure",
+                "Missing security headers",
+            ]
+        },
+        "mendix": {
+            "name": "Mendix",
+            "description": "Enterprise low-code platform",
+            "analyzer": "MendixAnalyzer",
+            "common_vulnerabilities": [
+                "Exposed REST endpoints",
+                "Information disclosure",
+                "Access control issues",
             ]
         },
         "mern": {

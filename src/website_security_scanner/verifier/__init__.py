@@ -15,6 +15,7 @@ from .verification_tests import (
     verify_ssrf,
     verify_open_redirect,
 )
+from .evidence_verifier import EvidenceVerifier, verify_vulnerabilities
 
 __all__ = [
     'VulnerabilityVerifier',
@@ -24,4 +25,6 @@ __all__ = [
     'verify_path_traversal',
     'verify_ssrf',
     'verify_open_redirect',
+    'EvidenceVerifier',
+    'verify_vulnerabilities',
 ]

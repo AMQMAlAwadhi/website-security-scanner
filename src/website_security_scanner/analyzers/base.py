@@ -147,6 +147,50 @@ class BaseAnalyzer:
             "evidence": evidence_list or [],
         }
 
+    def _build_http_instance_from_response(
+        self, response: requests.Response, evidence_list: Optional[List[Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Build HTTP instance dictionary from an explicit response object.
+        """
+        req_txt = ""
+        resp_txt = ""
+
+        try:
+            request = response.request
+        except Exception:
+            request = None
+
+        if request is not None:
+            try:
+                method = getattr(request, "method", "GET")
+                path = getattr(request, "path_url", "") or getattr(request, "url", "")
+                headers = "\n".join(
+                    f"{k}: {v}" for k, v in getattr(request, "headers", {}).items()
+                )
+                req_txt = f"{method} {path} HTTP/1.1\n{headers}"
+            except Exception as e:
+                self.logger.debug(f"Error building request text: {e}")
+                req_txt = ""
+
+        try:
+            status = response.status_code
+            reason = getattr(response, "reason", "")
+            headers = "\n".join(f"{k}: {v}" for k, v in response.headers.items())
+            resp_txt = f"HTTP/1.1 {status} {reason}\n{headers}"
+        except Exception as e:
+            self.logger.debug(f"Error building response text: {e}")
+            resp_txt = ""
+
+        url = getattr(request, "url", "") if request else getattr(response, "url", "")
+
+        return {
+            "url": url,
+            "request": req_txt,
+            "response": resp_txt,
+            "evidence": evidence_list or [],
+        }
+
     def add_vulnerability(
         self,
         vuln_type: str,
@@ -224,6 +268,7 @@ class BaseAnalyzer:
         references: Optional[List[str]] = None,
         parameter: str = "",
         url: str = "",
+        http_response: Optional[requests.Response] = None,
     ):
         """
         Add enriched vulnerability with comprehensive metadata and HTTP context.
@@ -278,7 +323,13 @@ class BaseAnalyzer:
         vuln["references"] = references or []
         
         # Add HTTP instance for professional Burp-style reporting
-        if self._last_response is not None:
+        if http_response is not None:
+            vuln["instances"] = [
+                self._build_http_instance_from_response(
+                    http_response, evidence_list=evidence_list
+                )
+            ]
+        elif self._last_response is not None:
             vuln["instances"] = [self._build_http_instance(evidence_list=evidence_list)]
 
     def _get_timestamp(self) -> str:
@@ -457,8 +508,8 @@ class BaseAnalyzer:
                 # Mark as pattern match only
                 vuln['verification'] = {
                     'verified': False,
-                    'confidence': 'medium',
-                    'method': 'pattern_match_only',
+                    'confidence': 'tentative',
+                    'method': 'static_analysis',
                     'note': 'This vulnerability type is verified via static analysis only'
                 }
                 continue
@@ -466,6 +517,14 @@ class BaseAnalyzer:
             # Perform active verification for exploitable vulnerabilities
             try:
                 verification_result = verifier.verify_vulnerability(vuln)
+
+                # Normalize verification fields for reporting consistency
+                if 'payload' in verification_result and 'payload_used' not in verification_result:
+                    verification_result['payload_used'] = verification_result.get('payload')
+                if 'reason' in verification_result and 'note' not in verification_result:
+                    verification_result['note'] = verification_result.get('reason')
+                if 'method' not in verification_result:
+                    verification_result['method'] = 'active_testing'
                 
                 # Update vulnerability with verification results
                 self.vulnerabilities[i]['verification'] = verification_result

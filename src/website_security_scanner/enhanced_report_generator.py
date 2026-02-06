@@ -62,20 +62,12 @@ class EnhancedReportGenerator(ProfessionalReportGenerator):
                 
                 total_score += score
                 severity_counts[severity] += 1
+                max_possible_score += weight * 1.0
         
-        # Normalize to 0-100 scale
-        if severity_counts['critical'] > 0:
-            max_possible_score = 100.0
-        elif severity_counts['high'] > 0:
-            max_possible_score = 75.0
-        elif severity_counts['medium'] > 0:
-            max_possible_score = 50.0
-        elif severity_counts['low'] > 0:
-            max_possible_score = 25.0
-        else:
-            max_possible_score = 10.0
-        
-        normalized_score = min(100.0, (total_score / max_possible_score) * 100)
+        # Normalize to 0-100 scale using count-weighted maximum
+        normalized_score = 0.0
+        if max_possible_score > 0:
+            normalized_score = min(100.0, (total_score / max_possible_score) * 100)
         
         # Determine risk level
         if normalized_score >= 80:
@@ -218,6 +210,10 @@ class EnhancedReportGenerator(ProfessionalReportGenerator):
         {self._generate_enhanced_risk_dashboard(chart_data, risk_score)}
         {self._generate_enhanced_remediation_priorities(remediation)}
         {self._generate_metadata_overview(results)}
+        {self._generate_methodology_section(results)}
+        {self._generate_platform_confidence_panel(results)}
+        {self._generate_comparative_tables(results)}
+        {self._generate_report_integrity_block(results)}
         {self._generate_burp_contents(results)}
         {self._generate_platform_specific_findings(results)}
         {self._generate_enhanced_findings(results)}

@@ -4,22 +4,53 @@ Transforms raw scan results into a structured format for professional reporting.
 
 from datetime import datetime
 from urllib.parse import urlparse
+from .utils.confidence_scoring import compute_confidence_score
 
 
 def calculate_risk_level(vulnerabilities):
-    """Calculate risk level based on vulnerability counts"""
-    critical = sum(1 for v in vulnerabilities if v['severity'].lower() == 'critical')
-    high = sum(1 for v in vulnerabilities if v['severity'].lower() == 'high')
-    medium = sum(1 for v in vulnerabilities if v['severity'].lower() == 'medium')
-    
-    if critical > 0 or high > 10:
-        return "Critical"
-    elif high > 5 or medium > 10:
-        return "High"
-    elif medium > 3 or high > 0:
-        return "Medium"
-    else:
+    """Calculate risk level using weighted severity and confidence."""
+    if not vulnerabilities:
         return "Low"
+
+    severity_weights = {
+        'critical': 10.0,
+        'high': 7.5,
+        'medium': 5.0,
+        'low': 2.5,
+        'info': 1.0
+    }
+
+    confidence_multipliers = {
+        'certain': 1.0,
+        'firm': 0.8,
+        'tentative': 0.5
+    }
+
+    total_score = 0.0
+    max_possible_score = 0.0
+
+    for vuln in vulnerabilities:
+        severity = vuln.get('severity', 'info').lower()
+        confidence = vuln.get('confidence', 'tentative').lower()
+        if severity in severity_weights and confidence in confidence_multipliers:
+            weight = severity_weights[severity]
+            total_score += weight * confidence_multipliers[confidence]
+            max_possible_score += weight * 1.0
+
+    normalized_score = 0.0
+    if max_possible_score > 0:
+        normalized_score = min(100.0, (total_score / max_possible_score) * 100)
+
+    if normalized_score >= 80:
+        return "Critical"
+    elif normalized_score >= 60:
+        return "High"
+    elif normalized_score >= 40:
+        return "Medium"
+    elif normalized_score >= 20:
+        return "Low"
+    else:
+        return "Minimal"
 
 
 def transform_results_for_professional_report(raw_results):
@@ -55,6 +86,7 @@ def transform_results_for_professional_report(raw_results):
             "severity": vuln.get("severity", "info"),
             "confidence": vuln.get("confidence", "tentative"),
             "description": vuln.get("description", "No details available."),
+            "evidence": vuln.get("evidence", []),
             # New enriched fields for background, impact and external references
             "background": vuln.get("background"),
             "impact": vuln.get("impact"),
@@ -64,6 +96,10 @@ def transform_results_for_professional_report(raw_results):
             "path": parsed.path if parsed else "/",
             "cwe": vuln.get('cwe', []),
             "capec": vuln.get('capec', []),
+            "verification": vuln.get("verification", {}),
+            "evidence_verification": vuln.get("evidence_verification", {}),
+            "platform": raw_results.get("platform_type", "unknown"),
+            **compute_confidence_score(vuln),
             "instances": instances,
         })
 
@@ -88,11 +124,16 @@ def transform_results_for_professional_report(raw_results):
             "scanner_version": "1.0-professional",
             "status_code": raw_results.get("status_code"),
             "response_time": raw_results.get("response_time"),
+            "verification_summary": raw_results.get("verification_summary", {}),
+            "evidence_verification_summary": raw_results.get("evidence_verification_summary", {}),
+            "scan_profile": raw_results.get("scan_profile", {}),
+            "git_commit": raw_results.get("git_commit", "N/A"),
         },
         "platform_analysis": {
             "platform_type": raw_results.get("platform_type", "unknown"),
             "technology_stack": [],  # This might need more logic to populate
             "specific_findings": raw_results.get(f'{raw_results.get("platform_type")}_specific', {}),
+            "platform_detection": raw_results.get("platform_detection", {}),
         },
         "executive_summary": {
             "total_vulnerabilities": len(vulnerabilities),

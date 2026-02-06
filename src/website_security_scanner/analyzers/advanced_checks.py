@@ -52,6 +52,7 @@ class AdvancedChecksMixin:
 
         http2_supported = False
         http2_negotiated = False
+        http2_advertised = False
         
         try:
             # First check: Test TLS ALPN for h2 support
@@ -78,16 +79,21 @@ class AdvancedChecksMixin:
                     response = client.get(url)
                     if response.http_version == "HTTP/2":
                         http2_negotiated = True
+                        alt_svc = response.headers.get("alt-svc", "")
+                        if "h2" in alt_svc:
+                            http2_advertised = True
             except (httpx.HTTPError, Exception):
                 http2_supported = False
         
         # Only report if HTTP/2 is properly supported AND negotiated
-        if http2_supported and http2_negotiated:
+        # Require at least two independent confirmations to reduce false positives
+        confirmations = sum([1 for flag in (http2_supported, http2_negotiated, http2_advertised) if flag])
+        if confirmations >= 2:
             self.add_enriched_vulnerability(
                 "HTTP/2 Protocol Supported",
                 "Info",
                 "Target supports and successfully negotiates HTTP/2. Review HTTP/2-specific hardening (HPACK/DoS controls, reverse-proxy config).",
-                f"HTTP/2 confirmed via ALPN and successful request",
+                f"HTTP/2 confirmed via ALPN, HTTP/2 request, and/or Alt-Svc advertisement",
                 "Review HTTP/2 configuration at the edge (WAF/CDN/proxy), apply rate limits, and keep TLS stack updated.",
                 category="Protocol Security",
                 owasp="A05:2021 - Security Misconfiguration",

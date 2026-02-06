@@ -9,7 +9,7 @@ Author: Bachelor Thesis Project - Low-Code Platforms Security Analysis
 """
 
 from typing import Dict, Any, Optional
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 
 class VerificationMetadataMixin:

@@ -9,6 +9,10 @@ This tool performs automated security assessments of low-code applications built
 - **Bubble.io** - Visual web application builder
 - **OutSystems** - Enterprise low-code platform
 - **Airtable** - Database and workflow platform
+- **Shopify** - E-commerce storefront platform
+- **Webflow** - Visual web design platform
+- **Wix** - Website builder platform
+- **Mendix** - Enterprise low-code platform
 - **Generic Web Applications** - Any other web-based applications
 
 ## Features

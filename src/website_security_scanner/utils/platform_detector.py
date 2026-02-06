@@ -83,6 +83,74 @@ class AdvancedPlatformDetector:
                     r'airtable.*embed'
                 ]
             },
+            'shopify': {
+                'headers': ['x-shopid', 'x-shopify', 'x-shopify-stage'],
+                'content_patterns': [
+                    r'myshopify\.com',
+                    r'cdn\.shopify\.com',
+                    r'shopifyassets',
+                    r'shopifycloud',
+                    r'shopify\-checkout',
+                    r'ShopifyAnalytics'
+                ],
+                'script_patterns': [
+                    r'cdn\.shopify\.com/.*\.js',
+                    r'shopifyassets\.com/.*\.js'
+                ],
+                'meta_patterns': [
+                    r'shopify-checkout-api-token',
+                    r'generator.*shopify'
+                ]
+            },
+            'webflow': {
+                'headers': ['x-webflow-id'],
+                'content_patterns': [
+                    r'data-wf-site',
+                    r'data-wf-page',
+                    r'webflow',
+                    r'uploads-ssl\.webflow\.com'
+                ],
+                'script_patterns': [
+                    r'webflow\.js',
+                    r'webflow.*\.js'
+                ],
+                'meta_patterns': [
+                    r'generator.*webflow'
+                ]
+            },
+            'wix': {
+                'headers': ['x-wix-'],
+                'content_patterns': [
+                    r'wixstatic\.com',
+                    r'parastorage\.com',
+                    r'wixBiSession',
+                    r'wixRenderer',
+                    r'wixData'
+                ],
+                'script_patterns': [
+                    r'wixstatic\.com/.*\.js',
+                    r'parastorage\.com/.*\.js'
+                ],
+                'meta_patterns': [
+                    r'generator.*wix'
+                ]
+            },
+            'mendix': {
+                'headers': ['x-mendix'],
+                'content_patterns': [
+                    r'/mxclientsystem/',
+                    r'mendix',
+                    r'mxui',
+                    r'window\.mx'
+                ],
+                'script_patterns': [
+                    r'mxclientsystem/.*\.js',
+                    r'mxui/.*\.js'
+                ],
+                'meta_patterns': [
+                    r'generator.*mendix'
+                ]
+            },
             'mern': {
                 'headers': ['x-powered-by: express'],
                 'content_patterns': [
@@ -123,6 +191,13 @@ class AdvancedPlatformDetector:
             'method': 'advanced',
             'platform_hint': platform_hint
         }
+
+        # Infer hint from domain if not provided
+        if platform_hint is None:
+            inferred_hint = self._infer_platform_from_domain(url)
+            if inferred_hint:
+                detection_result['platform_hint'] = inferred_hint
+                platform_hint = inferred_hint
         
         try:
             # Fetch the page
@@ -192,6 +267,28 @@ class AdvancedPlatformDetector:
             detection_result['confidence_scores'] = {'unknown': 0}
         
         return detection_result
+
+    def _infer_platform_from_domain(self, url: str) -> Optional[str]:
+        try:
+            parsed = urlparse(url)
+            hostname = (parsed.hostname or '').lower()
+            if hostname.endswith("bubbleapps.io") or "bubble.io" in hostname:
+                return "bubble.io"
+            if hostname.endswith("myshopify.com"):
+                return "shopify"
+            if "webflow" in hostname:
+                return "webflow"
+            if "wix" in hostname:
+                return "wix"
+            if "mendix" in hostname:
+                return "mendix"
+            if "outsystems" in hostname:
+                return "outsystems"
+            if "airtable" in hostname:
+                return "airtable.com"
+        except Exception:
+            return None
+        return None
     
     def _detect_by_headers(self, response: requests.Response) -> Dict[str, Dict]:
         """Detect platform by HTTP headers."""

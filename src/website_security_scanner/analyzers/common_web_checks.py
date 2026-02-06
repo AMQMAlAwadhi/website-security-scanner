@@ -30,7 +30,7 @@ class CommonWebChecksMixin:
         soup: Optional[BeautifulSoup],
         base_url: str,
         limit: int = 10,
-    ) -> List[Tuple[str, str]]:
+    ) -> List[Tuple[str, str, Optional[requests.Response]]]:
         if soup is None:
             return []
 
@@ -38,7 +38,7 @@ class CommonWebChecksMixin:
         if not script_tags:
             return []
 
-        entries: List[Tuple[str, str]] = []
+        entries: List[Tuple[str, str, Optional[requests.Response]]] = []
         seen = set()
         for tag in script_tags:
             src = tag.get("src")
@@ -56,7 +56,7 @@ class CommonWebChecksMixin:
                 continue
             if resp.status_code != 200:
                 continue
-            entries.append((script_url, resp.text))
+            entries.append((script_url, resp.text, resp))
         return entries
 
     def _get_set_cookie_headers(self, response: requests.Response) -> List[str]:
@@ -204,12 +204,14 @@ class CommonWebChecksMixin:
         max_assets = getattr(self, "max_external_js_assets", 8)
         fetch_external = getattr(self, "fetch_external_js_assets", True)
 
-        content_sources: List[Tuple[str, str]] = [("inline", js_content or "")]
+        content_sources: List[Tuple[str, str, Optional[requests.Response]]] = [
+            ("inline", js_content or "", None)
+        ]
         if fetch_external:
             content_sources.extend(self._fetch_external_javascript(soup, url, limit=max_assets))
 
         reported = set()
-        for source, content in content_sources:
+        for source, content, response in content_sources:
             if not content:
                 continue
             detected = detector.detect_secrets(content, url)
@@ -246,6 +248,7 @@ class CommonWebChecksMixin:
                     cwe=["CWE-798"],
                     url=url,
                     matched_value=value,
+                    http_response=response,
                 )
 
     def _map_secret_severity(self, secret: Dict[str, Any]) -> str:

@@ -56,7 +56,8 @@ class SecurityScannerCLI:
 ║                                                                               ║
 ║         Bachelor Thesis: Comparative Security Analysis of Low-Code Platforms  ║
 ║                                                                               ║
-║  Supported Platforms: Bubble.io │ OutSystems │ Airtable │ Generic Web Apps   ║
+║  Supported Platforms: Bubble.io │ OutSystems │ Airtable │ Shopify │ Webflow  ║
+║                      Wix │ Mendix │ Generic Web Apps                         ║
 ╚═══════════════════════════════════════════════════════════════════════════════╝
 {Style.RESET_ALL}
 """
@@ -402,6 +403,14 @@ class SecurityScannerCLI:
             specific_findings = basic_results.get("outsystems_specific", {})
         elif platform == "airtable":
             specific_findings = basic_results.get("airtable_specific", {})
+        elif platform == "shopify":
+            specific_findings = basic_results.get("shopify_specific", {})
+        elif platform == "webflow":
+            specific_findings = basic_results.get("webflow_specific", {})
+        elif platform == "wix":
+            specific_findings = basic_results.get("wix_specific", {})
+        elif platform == "mendix":
+            specific_findings = basic_results.get("mendix_specific", {})
 
         # Determine scan status and error info
         scan_failed = "error" in basic_results

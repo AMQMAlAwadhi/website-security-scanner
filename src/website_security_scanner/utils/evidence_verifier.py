@@ -16,7 +16,7 @@ import re
 import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 import requests
 
@@ -86,6 +86,7 @@ class EvidenceVerifier:
             'stale': False,
             'rechecked': False,
             'live_check_performed': False,
+            'verification_state': 'Unverified',
         }
         
         # Attempt live verification for certain vulnerability types
@@ -96,9 +97,14 @@ class EvidenceVerifier:
             verification_record.update(live_result)
         
         # Check if evidence is stale (based on cache or age)
-        if self._is_evidence_stale(url, evidence_hash):
+        if self._is_evidence_stale(url, evidence_hash, vuln_copy.get('timestamp')):
             verification_record['stale'] = True
             verification_record['verification_status'] = self.CONFIDENCE_STALE
+
+        # Derive explicit verification state for reporting
+        verification_record['verification_state'] = self._derive_verification_state(
+            verification_record, evidence
+        )
         
         # Add verification metadata to vulnerability
         vuln_copy['evidence_verification'] = verification_record
@@ -107,6 +113,20 @@ class EvidenceVerifier:
         self._cache_verification(url, evidence_hash, verification_record)
         
         return vuln_copy
+
+    def _derive_verification_state(self, record: Dict[str, Any], evidence: Any) -> str:
+        """Map verification results to explicit states."""
+        status = record.get('verification_status')
+        if status == self.CONFIDENCE_VERIFIED:
+            return 'Confirmed'
+        if status == self.CONFIDENCE_STALE:
+            return 'Stale'
+        if record.get('live_check_performed'):
+            return 'Unverified'
+        # Static analysis only
+        if evidence:
+            return 'Probable'
+        return 'Unverified'
     
     def _hash_evidence(self, evidence: Any, url: str, vuln_type: str) -> str:
         """
@@ -232,11 +252,12 @@ class EvidenceVerifier:
         evidence = vulnerability.get('evidence', '')
         if isinstance(evidence, str) and evidence:
             # Extract parameter from evidence
-            param_match = re.search(r'Parameter:\s*(\w+)', evidence)
+            param_match = re.search(r'Parameter:\s*([^\s,]+)', evidence)
             if param_match:
                 param = param_match.group(1)
                 parsed = urlparse(url)
-                if param in parsed.query:
+                params = parse_qs(parsed.query)
+                if param in params:
                     # Parameter still in URL, check if reflected
                     return self._check_parameter_reflection(url, response, param)
         
@@ -271,7 +292,7 @@ class EvidenceVerifier:
             if param_match:
                 param = param_match.group(1)
                 parsed = urlparse(url)
-                params = urlparse.parse_qs(parsed.query)
+                params = parse_qs(parsed.query)
                 return param in params
         return False
     
@@ -391,7 +412,7 @@ class EvidenceVerifier:
         
         return False
     
-    def _is_evidence_stale(self, url: str, evidence_hash: str) -> bool:
+    def _is_evidence_stale(self, url: str, evidence_hash: str, vuln_timestamp: Optional[str] = None) -> bool:
         """
         Check if evidence is stale based on cache age.
         
@@ -402,6 +423,16 @@ class EvidenceVerifier:
         Returns:
             True if evidence is considered stale
         """
+        # Check explicit vulnerability timestamp if available
+        if vuln_timestamp:
+            try:
+                timestamp = datetime.fromisoformat(vuln_timestamp.replace('Z', '+00:00'))
+                age = datetime.utcnow() - timestamp.replace(tzinfo=None)
+                if age > timedelta(hours=self.STALE_THRESHOLD_HOURS):
+                    return True
+            except (ValueError, TypeError):
+                pass
+
         cache_key = f"{url}:{evidence_hash}"
         cached = self._verification_cache.get(cache_key)
         
