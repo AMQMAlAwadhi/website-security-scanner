@@ -74,6 +74,15 @@ wss --help
 
 ### Option 1: Web Interface (Recommended)
 
+0. **Set required environment variable**:
+```bash
+# Windows (PowerShell)
+$env:SECRET_KEY="your-secret-key"
+
+# macOS/Linux
+export SECRET_KEY="your-secret-key"
+```
+
 1. **Start the web server**:
 ```bash
 wss-web
@@ -88,7 +97,24 @@ http://localhost:5000
 
 See [docs/user_guide/WEB_FRONTEND_GUIDE.md](docs/user_guide/WEB_FRONTEND_GUIDE.md) for detailed documentation.
 
-### Option 2: Command Line Interface
+### Option 2: Docker (Recommended for Deployment)
+
+1. **Create environment file**:
+```bash
+cp .env.example .env
+```
+
+2. **Start the stack**:
+```bash
+docker-compose up -d
+```
+
+3. **Open in browser**:
+```
+http://localhost:5000
+```
+
+### Option 3: Command Line Interface
 
 1. **Scan a single URL**:
 ```bash
@@ -341,7 +367,7 @@ For detailed verification documentation, see [docs/user_guide/VULNERABILITY_VERI
 - Extending verification
 
 ### 📋 Enhancement Summary
-For a complete overview of all enhancements, see [docs/CHANGELOG.md](docs/CHANGELOG.md):
+For a complete overview of all enhancements, see [CHANGELOG.md](CHANGELOG.md):
 - Architecture improvements
 - Performance considerations
 - Migration notes
@@ -405,7 +431,9 @@ Comprehensive documentation is available in the [`docs/`](docs/) directory:
 - **[Technical Documentation](docs/technical/)** - Detailed vulnerability detection methods
 - **[Platform Guides](docs/platforms/)** - Platform-specific security analysis documentation
 - **[Architecture Guide](docs/ARCHITECTURE.md)** - System design and extension guide
-- **[Changelog](docs/CHANGELOG.md)** - Complete history of enhancements
+- **[Changelog](CHANGELOG.md)** - Complete history of enhancements
+- **[Development Guide](DEVELOPMENT.md)** - Development setup, testing, and contributions
+- **[Deployment Guide](DEPLOYMENT.md)** - Production deployment instructions
 - **[Documentation Index](docs/README.md)** - Complete documentation organization and standards
 
 ## License
@@ -437,4 +465,3 @@ For academic collaboration or questions about this research:
 ---
 
 **Disclaimer**: This tool is for educational and research purposes. Always obtain proper authorization before scanning applications. The authors are not responsible for misuse of this tool.
-

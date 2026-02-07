@@ -50,7 +50,13 @@ def create_app(config=None):
                 template_folder=str(Path(__file__).parent / 'templates'),
                 static_folder=str(Path(__file__).parent / 'static'))
     
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+    secret_key = os.environ.get('SECRET_KEY') or (config or {}).get('SECRET_KEY')
+    if not secret_key:
+        raise ValueError(
+            "SECRET_KEY environment variable is required. "
+            "Set it with: python -c \"import secrets; print(secrets.token_hex(32))\""
+        )
+    app.config['SECRET_KEY'] = secret_key
     app.config['UPLOAD_FOLDER'] = str(UPLOAD_FOLDER)
     app.config['REPORTS_FOLDER'] = str(REPORTS_FOLDER)
     app.config['SCANS_FOLDER'] = str(SCANS_FOLDER)
