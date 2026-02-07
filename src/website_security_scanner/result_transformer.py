@@ -7,6 +7,8 @@ from typing import Any, List
 from urllib.parse import urlparse
 
 from .utils.confidence_scoring import compute_confidence_score
+from .utils.normalization import normalize_severity, normalize_confidence
+from .utils.platform_data import get_platform_findings
 
 
 def _normalize_evidence(evidence: Any) -> List[Any]:
@@ -15,17 +17,6 @@ def _normalize_evidence(evidence: Any) -> List[Any]:
     if isinstance(evidence, list):
         return evidence
     return [evidence]
-
-
-def _normalize_severity(severity: Any) -> str:
-    if not severity:
-        return "Info"
-    sev = str(severity).lower()
-    if sev in {"critical", "high", "medium", "low"}:
-        return sev.title()
-    if sev in {"info", "information"}:
-        return "Info"
-    return "Info"
 
 
 def _safe_duration(start_timestamp: Any) -> str:
@@ -40,48 +31,10 @@ def _safe_duration(start_timestamp: Any) -> str:
 
 def calculate_risk_level(vulnerabilities):
     """Calculate risk level using weighted severity and confidence."""
-    if not vulnerabilities:
-        return "Low"
+    from .utils.risk_calculator import calculate_risk_score as calc_score
 
-    severity_weights = {
-        'critical': 10.0,
-        'high': 7.5,
-        'medium': 5.0,
-        'low': 2.5,
-        'info': 1.0
-    }
-
-    confidence_multipliers = {
-        'certain': 1.0,
-        'firm': 0.8,
-        'tentative': 0.5
-    }
-
-    total_score = 0.0
-    max_possible_score = 0.0
-
-    for vuln in vulnerabilities:
-        severity = vuln.get('severity', 'info').lower()
-        confidence = vuln.get('confidence', 'tentative').lower()
-        if severity in severity_weights and confidence in confidence_multipliers:
-            weight = severity_weights[severity]
-            total_score += weight * confidence_multipliers[confidence]
-            max_possible_score += weight * 1.0
-
-    normalized_score = 0.0
-    if max_possible_score > 0:
-        normalized_score = min(100.0, (total_score / max_possible_score) * 100)
-
-    if normalized_score >= 80:
-        return "Critical"
-    elif normalized_score >= 60:
-        return "High"
-    elif normalized_score >= 40:
-        return "Medium"
-    elif normalized_score >= 20:
-        return "Low"
-    else:
-        return "Minimal"
+    result = calc_score(vulnerabilities)
+    return result.get('level', 'Low')
 
 
 def transform_results_for_professional_report(raw_results):
@@ -115,8 +68,8 @@ def transform_results_for_professional_report(raw_results):
 
         vulnerabilities.append({
             "title": vuln.get("type", "Unnamed Vulnerability"),
-            "severity": _normalize_severity(vuln.get("severity", "info")),
-            "confidence": vuln.get("confidence", "tentative"),
+            "severity": normalize_severity(vuln.get("severity", "info")),
+            "confidence": normalize_confidence(vuln.get("confidence", "tentative")),
             "description": vuln.get("description", "No details available."),
             "evidence": evidence_list,
             # New enriched fields for background, impact and external references
@@ -148,12 +101,7 @@ def transform_results_for_professional_report(raw_results):
 
     # Assemble the structured data
     platform = raw_results.get("platform_type", "unknown")
-    specific_findings = (
-        raw_results.get(f"{platform}_specific")
-        or raw_results.get(f"{platform}_specific_findings")
-    )
-    if platform == "generic":
-        specific_findings = specific_findings or raw_results.get("generic_analysis") or raw_results.get("generic_findings")
+    specific_findings = get_platform_findings(platform, raw_results)
 
     structured_data = {
         "scan_metadata": {
