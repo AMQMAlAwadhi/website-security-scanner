@@ -110,7 +110,7 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
 
         # Perform generic security checks
         self._check_session_tokens_in_url(url)
-        self._check_secrets_in_javascript(js_content, url, soup)
+        self._check_secrets_in_javascript(js_content, url)
         self._check_cookie_security(response)
         self._check_csp_policy(response)
         self._check_clickjacking(response)
@@ -515,7 +515,7 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
             r'authentication',
         ]
 
-        js_content = self._extract_javascript(soup)
+        js_content = self._extract_javascript(soup, url)
         auth_found = any(re.search(indicator, js_content, re.IGNORECASE) for indicator in auth_indicators)
 
         if not auth_found:
@@ -658,6 +658,23 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                     owasp="A05:2021 - Security Misconfiguration",
                     cwe=["CWE-614"]
                 )
+
+    def _check_stripe_public_keys(self, js_content: str, url: str):
+        """Detect Stripe publishable keys in client-side code."""
+        pattern = r"\bpk_(live|test)_[A-Za-z0-9]{16,}\b"
+        for match in re.finditer(pattern, js_content):
+            key = match.group(0)
+            self.add_enriched_vulnerability(
+                "Stripe Publishable Key Exposure",
+                "Info",
+                "Stripe publishable key found in client-side code.",
+                f"Key pattern: {key[:16]}...",
+                "Ensure only publishable keys are used client-side; never expose secret keys.",
+                category="Information Disclosure",
+                owasp="A05:2021 - Security Misconfiguration",
+                cwe=["CWE-200"],
+                url=url,
+            )
 
             if "httponly" not in cookie_lower:
                 self.add_enriched_vulnerability(
