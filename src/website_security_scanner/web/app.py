@@ -29,7 +29,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from website_security_scanner.main import LowCodeSecurityScanner
 from website_security_scanner.enhanced_report_generator import EnhancedReportGenerator
 from website_security_scanner.result_transformer import transform_results_for_professional_report
-from website_security_scanner.verifier import VulnerabilityVerifier
 
 # Global configuration - use absolute paths from project root
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
@@ -77,7 +76,6 @@ def create_app(config=None):
     try:
         app.scanner = LowCodeSecurityScanner()
         app.report_generator = EnhancedReportGenerator()
-        app.verifier = VulnerabilityVerifier(app.scanner.session)
         print("Scanner components initialized successfully")
     except Exception as e:
         print(f"Error initializing scanner components: {e}")
@@ -419,10 +417,13 @@ def execute_scan(app, socketio, scan_id):
         scan_profile = scan_job.get('scan_profile', {})
 
         # Update scan profile for this scan
-        if scan_profile:
-            app.scanner.update_scan_profile(**scan_profile)
-            if 'verify_ssl' in scan_profile:
-                app.scanner.verify_ssl = bool(scan_profile.get('verify_ssl', True))
+        profile_updates = dict(scan_profile) if scan_profile else {}
+        profile_updates.setdefault('active_verification', bool(verify))
+        profile_updates.setdefault('evidence_verification', bool(verify))
+        if profile_updates:
+            app.scanner.update_scan_profile(**profile_updates)
+            if 'verify_ssl' in profile_updates:
+                app.scanner.verify_ssl = bool(profile_updates.get('verify_ssl', True))
         
         # Update progress
         socketio.emit('scan_update', {
@@ -483,28 +484,6 @@ def execute_scan(app, socketio, scan_id):
             'progress': 60,
             'message': 'Analyzing vulnerabilities...'
         })
-        
-        # Verify vulnerabilities if requested
-        if verify and results.get('vulnerabilities'):
-            socketio.emit('scan_update', {
-                'scan_id': scan_id,
-                'progress': 70,
-                'message': 'Verifying vulnerabilities...'
-            })
-            
-            verified_count = 0
-            for i, vuln in enumerate(results['vulnerabilities']):
-                verification = app.verifier.verify_vulnerability(vuln)
-                vuln['verification'] = verification
-                if verification.get('verified'):
-                    verified_count += 1
-                
-                progress = 70 + (i / len(results['vulnerabilities'])) * 20
-                socketio.emit('scan_update', {
-                    'scan_id': scan_id,
-                    'progress': int(progress),
-                    'message': f'Verified {verified_count} vulnerabilities...'
-                })
         
         # Save results
         result_file = Path(app.config['SCANS_FOLDER']) / f"{scan_id}.json"

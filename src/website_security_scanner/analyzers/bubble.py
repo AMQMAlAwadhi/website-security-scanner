@@ -84,7 +84,7 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
         self._record_http_context(url, response)
 
         # Extract JavaScript content for analysis
-        js_content = self._extract_javascript(soup)
+        js_content = self._extract_javascript(soup, url)
         html_content = str(soup)
 
         # Analyze API endpoints
@@ -120,7 +120,7 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
         self._check_open_redirection(js_content)
         self._check_ajax_header_manipulation(js_content)
         self._check_linkfinder(js_content)
-        self._check_hsts(response)
+        self._check_hsts(response, url)
         self._check_content_type_options(response)
         self._check_vulnerable_dependencies(js_content)
         self._check_robots_txt(url)
@@ -364,7 +364,7 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
             "bubble_specific_findings": self.findings,
         }
 
-    def _extract_javascript(self, soup: BeautifulSoup) -> str:
+    def _extract_javascript(self, soup: BeautifulSoup, base_url: str) -> str:
         """Extract all JavaScript content from the page"""
         js_content = ""
 
@@ -373,15 +373,12 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
             if script.string:
                 js_content += script.string + "\n"
 
-        # Extract external scripts (attempt to fetch)
-        for script in soup.find_all("script", src=True):
-            try:
-                script_url = urljoin(soup.base.get("href", ""), script["src"])
-                script_response = self.session.get(script_url, timeout=5)
-                if script_response.status_code == 200:
-                    js_content += script_response.text + "\n"
-            except Exception:
-                pass  # Skip if unable to fetch external script
+        # Extract external scripts (bounded by scan profile)
+        for _, content, _ in self._fetch_external_javascript(
+            soup, base_url, limit=self.max_external_js_assets
+        ):
+            if content:
+                js_content += content + "\n"
 
         return js_content
 
@@ -869,17 +866,22 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                 if any(sensitive in match.lower() for sensitive in ["admin", "api", "config", "debug"]):
                     self.add_enriched_vulnerability(
                         "Exposed Sensitive Endpoint",
-                        "Low",
+                        "Info",
                         f"Potentially sensitive endpoint exposed: {match}",
                         match,
                         "Review exposed endpoints and implement proper access controls",
+                        confidence="Tentative",
                         category="Information Disclosure",
                         owasp="A01:2021 - Broken Access Control",
                         cwe=["CWE-200"]
                     )
 
-    def _check_hsts(self, response: requests.Response):
+    def _check_hsts(self, response: requests.Response, url: str = ""):
         """Check HSTS implementation"""
+        if url and not url.lower().startswith("https://"):
+            return
+        if hasattr(self, "_is_html_response") and not self._is_html_response(response):
+            return
         hsts = response.headers.get("Strict-Transport-Security", "")
         if not hsts:
             self.add_enriched_vulnerability(
@@ -888,6 +890,7 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                 "No HSTS header found",
                 "",
                 "Implement HTTP Strict Transport Security",
+                confidence="Tentative",
                 category="Security Headers",
                 owasp="A05:2021 - Security Misconfiguration",
                 cwe=["CWE-523"]
@@ -895,14 +898,17 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
 
     def _check_content_type_options(self, response: requests.Response):
         """Check X-Content-Type-Options"""
+        if hasattr(self, "_is_html_response") and not self._is_html_response(response):
+            return
         xcto = response.headers.get("X-Content-Type-Options", "")
         if xcto != "nosniff":
             self.add_enriched_vulnerability(
                 "Missing X-Content-Type-Options",
-                "Low",
+                "Info",
                 "X-Content-Type-Options header missing or incorrect",
                 xcto,
                 "Set X-Content-Type-Options: nosniff",
+                confidence="Tentative",
                 category="Security Headers",
                 owasp="A05:2021 - Security Misconfiguration",
                 cwe=["CWE-173"]
@@ -949,8 +955,14 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
         """Check robots.txt for information disclosure"""
         from urllib.parse import urljoin
         try:
+            if int(getattr(self, "scan_depth", 1) or 1) <= 1:
+                return
             robots_url = urljoin(url, "/robots.txt")
-            response = self.session.get(robots_url, timeout=5)
+            response = self.session.get(
+                robots_url,
+                timeout=self._get_timeout_seconds(5),
+                verify=getattr(self, "verify_ssl", True),
+            )
             if response.status_code == 200:
                 content = response.text
                 # Look for sensitive entries
@@ -961,6 +973,7 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                         "robots.txt contains sensitive information",
                         content[:100],
                         "Review robots.txt content",
+                        confidence="Tentative",
                         category="Information Disclosure",
                         owasp="A09:2021 - Security Logging and Monitoring Failures",
                         cwe=["CWE-200"],

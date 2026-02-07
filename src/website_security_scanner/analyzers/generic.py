@@ -12,7 +12,7 @@ Author: Bachelor Thesis Project - Low-Code Platforms Security Analysis
 import re
 import base64
 from typing import Any, Dict, List
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, urljoin
 
 import requests
 from bs4 import BeautifulSoup
@@ -72,7 +72,7 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
 
         # Analyze links and endpoints
         self._analyze_links(soup, url)
-        self._analyze_endpoints(js_content)
+        self._analyze_endpoints(js_content, url)
 
         # Generic security checks
         self._check_session_tokens_in_url(url)
@@ -86,7 +86,7 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
         self._check_open_redirection(js_content)
         self._check_ajax_header_manipulation(js_content)
         self._check_linkfinder(js_content)
-        self._check_hsts(response)
+        self._check_hsts(response, url)
         self._check_content_type_options(response)
         self._check_vulnerable_dependencies(js_content)
         self._check_robots_txt(url)
@@ -211,7 +211,7 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                     cwe=["CWE-79"]
                 )
 
-    def _analyze_endpoints(self, js_content: str):
+    def _analyze_endpoints(self, js_content: str, base_url: str):
         """Analyze API endpoints in JavaScript"""
         endpoint_patterns = [
             r'["\']https?://[^"\']+["\']',
@@ -223,17 +223,28 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
         for pattern in endpoint_patterns:
             matches = re.findall(pattern, js_content, re.IGNORECASE)
             for match in matches:
-                if match not in self.endpoints:
-                    self.endpoints.append(match)
+                raw = match.strip("\"'")
+                if raw.startswith("/"):
+                    endpoint_url = urljoin(base_url, raw)
+                elif raw.startswith(("http://", "https://")):
+                    endpoint_url = raw
+                else:
+                    continue
+
+                if endpoint_url not in self.endpoints:
+                    self.endpoints.append(endpoint_url)
                     
                     # Check for sensitive endpoints
-                    if any(sensitive in match.lower() for sensitive in ["admin", "api", "config", "debug", "test"]):
+                    if any(sensitive in endpoint_url.lower() for sensitive in ["admin", "api", "config", "debug", "test"]):
+                        if not self._is_same_origin_url(base_url, endpoint_url):
+                            continue
                         self.add_enriched_vulnerability(
                             "Potentially Sensitive Endpoint",
-                            "Low",
-                            f"Potentially sensitive endpoint: {match}",
-                            match,
+                            "Info",
+                            f"Potentially sensitive endpoint: {endpoint_url}",
+                            endpoint_url,
                             "Review endpoint access controls",
+                            confidence="Tentative",
                             category="Information Disclosure",
                             owasp="A01:2021 - Broken Access Control",
                             cwe=["CWE-200"]
@@ -274,13 +285,14 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
         for pattern in redirect_patterns:
             matches = re.findall(pattern, js_content, re.IGNORECASE)
             for match in matches:
-                if "http" in match and not match.startswith(("http://", "https://")):
+                if match.startswith(("http://", "https://", "//")):
                     self.add_enriched_vulnerability(
-                        "Open Redirection",
-                        "Medium",
-                        f"Potential open redirection: {match}",
+                        "Open Redirection Indicator",
+                        "Low",
+                        f"Potential redirect target hardcoded in client-side code: {match}",
                         match,
                         "Validate and whitelist redirect URLs",
+                        confidence="Tentative",
                         category="Server-Side Request Forgery",
                         owasp="A10:2021 - Server-Side Request Forgery",
                         cwe=["CWE-601"]
@@ -300,10 +312,11 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                 if "X-Requested-With" not in js_content:
                     self.add_enriched_vulnerability(
                         "Missing AJAX Security Headers",
-                        "Low",
+                        "Info",
                         "AJAX requests may lack security headers",
                         "",
                         "Implement proper AJAX security headers",
+                        confidence="Tentative",
                         category="Cross-Site Scripting",
                         owasp="A05:2021 - Security Misconfiguration",
                         cwe=["CWE-1007"]
@@ -312,6 +325,7 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
 
     def _check_linkfinder(self, js_content: str):
         """Check for exposed links and endpoints"""
+        base_url = getattr(self._last_request, "url", "") if self._last_request else ""
         url_patterns = [
             r'["\']https?://[^"\']+["\']',
             r'["\']/[^"\']*["\']',
@@ -320,21 +334,30 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
         for pattern in url_patterns:
             matches = re.findall(pattern, js_content)
             for match in matches:
+                raw = match.strip("\"'")
+                endpoint_url = urljoin(base_url, raw) if raw.startswith("/") else raw
+                if base_url and not self._is_same_origin_url(base_url, endpoint_url):
+                    continue
                 # Check for sensitive endpoints
-                if any(sensitive in match.lower() for sensitive in ["admin", "api", "config", "debug"]):
+                if any(sensitive in endpoint_url.lower() for sensitive in ["admin", "api", "config", "debug"]):
                     self.add_enriched_vulnerability(
                         "Exposed Sensitive Endpoint",
-                        "Low",
-                        f"Potentially sensitive endpoint: {match}",
-                        match,
+                        "Info",
+                        f"Potentially sensitive endpoint: {endpoint_url}",
+                        endpoint_url,
                         "Review exposed endpoints and implement proper access controls",
+                        confidence="Tentative",
                         category="Information Disclosure",
                         owasp="A01:2021 - Broken Access Control",
                         cwe=["CWE-200"]
                     )
 
-    def _check_hsts(self, response: requests.Response):
+    def _check_hsts(self, response: requests.Response, url: str = ""):
         """Check HSTS implementation"""
+        if url and not url.lower().startswith("https://"):
+            return
+        if not self._is_html_response(response):
+            return
         hsts = response.headers.get("Strict-Transport-Security", "")
         if not hsts:
             self.add_enriched_vulnerability(
@@ -343,6 +366,7 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                 "No HSTS header found",
                 "",
                 "Implement HTTP Strict Transport Security",
+                confidence="Tentative",
                 category="Security Headers",
                 owasp="A05:2021 - Security Misconfiguration",
                 cwe=["CWE-523"]
@@ -350,14 +374,17 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
 
     def _check_content_type_options(self, response: requests.Response):
         """Check X-Content-Type-Options"""
+        if not self._is_html_response(response):
+            return
         xcto = response.headers.get("X-Content-Type-Options", "")
         if xcto != "nosniff":
             self.add_enriched_vulnerability(
                 "Missing X-Content-Type-Options",
-                "Low",
+                "Info",
                 "X-Content-Type-Options header missing or incorrect",
                 xcto,
                 "Set X-Content-Type-Options: nosniff",
+                confidence="Tentative",
                 category="Security Headers",
                 owasp="A05:2021 - Security Misconfiguration",
                 cwe=["CWE-173"]
@@ -379,10 +406,11 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                 if version.startswith(("1.", "2.", "3.", "4.")):  # Older versions
                     self.add_enriched_vulnerability(
                         "Potentially Vulnerable Dependency",
-                        "Low",
+                        "Info",
                         f"Old library version detected: {version}",
                         version,
                         "Update to latest stable version",
+                        confidence="Tentative",
                         category="Vulnerable Components",
                         owasp="A06:2021 - Vulnerable and Outdated Components",
                         cwe=["CWE-937"]
@@ -392,8 +420,14 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
         """Check robots.txt for information disclosure"""
         from urllib.parse import urljoin
         try:
+            if int(getattr(self, "scan_depth", 1) or 1) <= 1:
+                return
             robots_url = urljoin(url, "/robots.txt")
-            response = self.session.get(robots_url, timeout=5)
+            response = self.session.get(
+                robots_url,
+                timeout=self._get_timeout_seconds(5),
+                verify=getattr(self, "verify_ssl", True),
+            )
             if response.status_code == 200:
                 content = response.text
                 # Look for sensitive entries
@@ -404,6 +438,7 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                         "robots.txt contains sensitive information",
                         content[:100],
                         "Review robots.txt content",
+                        confidence="Tentative",
                         category="Information Disclosure",
                         owasp="A09:2021 - Security Logging and Monitoring Failures",
                         cwe=["CWE-200"],
@@ -417,11 +452,12 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
         # Simple check for path parameters that might be vulnerable
         if re.search(r'[?&](path|dir|file|folder)=', url, re.IGNORECASE):
             self.add_enriched_vulnerability(
-                "Potential Directory Traversal",
-                "Medium",
-                "URL contains path parameter that might be vulnerable",
+                "Directory Traversal Indicator",
+                "Info",
+                "URL contains a path parameter that warrants further testing",
                 url,
                 "Validate and sanitize all path parameters",
+                confidence="Tentative",
                 category="Injection",
                 owasp="A03:2021 - Injection",
                 cwe=["CWE-22"]
@@ -442,10 +478,11 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
             if re.search(pattern, content, re.IGNORECASE):
                 self.add_enriched_vulnerability(
                     "Potential SQL Injection Point",
-                    "High",
-                    "SQL keywords found in client-side code",
+                    "Info",
+                    "SQL keywords found in client-side code (heuristic indicator)",
                     "",
                     "Review database queries and use parameterized queries",
+                    confidence="Tentative",
                     category="Injection",
                     owasp="A03:2021 - Injection",
                     cwe=["CWE-89"]
@@ -464,11 +501,12 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
         for pattern in cmd_patterns:
             if re.search(pattern, js_content, re.IGNORECASE):
                 self.add_enriched_vulnerability(
-                    "Potential Command Injection",
-                    "Critical",
-                    "Command execution function found",
+                    "Command Injection Indicator",
+                    "Info",
+                    "Potential command execution function found in client-side code (heuristic indicator)",
                     "",
                     "Avoid command execution functions with user input",
+                    confidence="Tentative",
                     category="Injection",
                     owasp="A03:2021 - Injection",
                     cwe=["CWE-78"]
@@ -487,10 +525,11 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
             if not accept_attr:
                 self.add_enriched_vulnerability(
                     "Unrestricted File Upload",
-                    "High",
-                    "File upload without type restrictions",
+                    "Medium",
+                    "File upload input without explicit type restrictions",
                     str(file_input)[:50],
                     "Implement file type validation and content inspection",
+                    confidence="Tentative",
                     category="Injection",
                     owasp="A03:2021 - Injection",
                     cwe=["CWE-434"]

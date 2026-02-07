@@ -20,6 +20,30 @@ from ..utils.secret_detector import SecretDetector
 class CommonWebChecksMixin:
     """Mixin providing shared web security checks with evidence tracking."""
 
+    def _get_timeout_seconds(self, fallback: int = 10) -> int:
+        try:
+            return int(getattr(self, "timeout_seconds", fallback) or fallback)
+        except (TypeError, ValueError):
+            return fallback
+
+    def _is_html_response(self, response: requests.Response) -> bool:
+        if response is None:
+            return False
+        if response.status_code >= 400:
+            return False
+        content_type = response.headers.get("Content-Type", "").lower()
+        if not content_type:
+            return True
+        return "text/html" in content_type or "application/xhtml+xml" in content_type
+
+    def _is_same_origin_url(self, base_url: str, other_url: str) -> bool:
+        try:
+            base = urlparse(base_url)
+            other = urlparse(other_url)
+            return base.scheme == other.scheme and base.netloc == other.netloc
+        except Exception:
+            return False
+
     def _get_secret_detector(self) -> SecretDetector:
         if not hasattr(self, "_secret_detector"):
             self._secret_detector = SecretDetector()
@@ -34,27 +58,67 @@ class CommonWebChecksMixin:
         if soup is None:
             return []
 
+        scan_depth = int(getattr(self, "scan_depth", 1) or 1)
+        if scan_depth <= 1:
+            return []
+
+        allow_third_party = bool(getattr(self, "allow_third_party_js", False))
+        fetch_external = bool(getattr(self, "fetch_external_js_assets", True))
+        if not fetch_external:
+            return []
+
         script_tags = soup.find_all("script", src=True)
         if not script_tags:
             return []
 
         entries: List[Tuple[str, str, Optional[requests.Response]]] = []
         seen = set()
+        timeout = self._get_timeout_seconds(10)
+        max_bytes = int(getattr(self, "max_js_bytes", 512 * 1024))
         for tag in script_tags:
             src = tag.get("src")
             if not src:
                 continue
+            if tag.get("type") and "javascript" not in tag.get("type", "").lower():
+                continue
             script_url = urljoin(base_url, src)
+            if not script_url.lower().startswith(("http://", "https://")):
+                continue
             if script_url in seen:
                 continue
             seen.add(script_url)
             if len(entries) >= limit:
                 break
+            same_origin = self._is_same_origin_url(base_url, script_url)
+            if not same_origin:
+                if scan_depth < 3 or not allow_third_party:
+                    continue
             try:
-                resp = self.session.get(script_url, timeout=6)
-            except Exception:
+                resp = self.session.get(
+                    script_url,
+                    timeout=timeout,
+                    verify=getattr(self, "verify_ssl", True),
+                )
+            except Exception as exc:
+                if hasattr(self, "_record_warning"):
+                    self._record_warning(
+                        "External JavaScript fetch failed",
+                        url=script_url,
+                        error=str(exc),
+                    )
                 continue
             if resp.status_code != 200:
+                continue
+            content_type = resp.headers.get("Content-Type", "").lower()
+            if content_type and "javascript" not in content_type and "ecmascript" not in content_type:
+                continue
+            if resp.content is not None and len(resp.content) > max_bytes:
+                if hasattr(self, "_record_warning"):
+                    self._record_warning(
+                        "External JavaScript skipped due to size",
+                        url=script_url,
+                        size_bytes=len(resp.content),
+                    )
                 continue
             entries.append((script_url, resp.text, resp))
         return entries
@@ -280,10 +344,11 @@ class CommonWebChecksMixin:
             if "secure" not in cookie_lower:
                 self.add_enriched_vulnerability(
                     "Insecure Cookie (Missing Secure Flag)",
-                    "Medium",
+                    "Low",
                     f"Cookie '{cookie_name}' lacks Secure flag",
                     cookie[:100],
                     "Set the 'Secure' flag for all cookies to ensure they are only transmitted over HTTPS.",
+                    confidence="Tentative",
                     category="Session Management",
                     owasp="A05:2021 - Security Misconfiguration",
                     cwe=["CWE-614"],
@@ -296,6 +361,7 @@ class CommonWebChecksMixin:
                     f"Cookie '{cookie_name}' lacks HttpOnly flag",
                     cookie[:100],
                     "Set the 'HttpOnly' flag for all cookies to prevent them from being accessed by client-side scripts.",
+                    confidence="Tentative",
                     category="Session Management",
                     owasp="A05:2021 - Security Misconfiguration",
                     cwe=["CWE-1004"],
@@ -303,14 +369,17 @@ class CommonWebChecksMixin:
 
     def _check_csp_policy(self, response: requests.Response):
         """Check Content Security Policy."""
+        if not self._is_html_response(response):
+            return
         csp = response.headers.get("Content-Security-Policy", "")
         if not csp:
             self.add_enriched_vulnerability(
                 "Missing Content Security Policy",
-                "Low",
+                "Info",
                 "No CSP header found",
                 EvidenceBuilder.header_evidence("Content-Security-Policy"),
                 "Implement Content Security Policy",
+                confidence="Tentative",
                 category="Security Headers",
                 owasp="A05:2021 - Security Misconfiguration",
                 cwe=["CWE-693"],
@@ -329,10 +398,11 @@ class CommonWebChecksMixin:
         if issues:
             self.add_enriched_vulnerability(
                 "Weak Content Security Policy",
-                "Medium",
+                "Low",
                 "CSP policy contains potentially unsafe directives.",
                 EvidenceBuilder.header_evidence("Content-Security-Policy", csp[:200]),
                 "Harden CSP by removing unsafe-inline/unsafe-eval and adding form-action restrictions.",
+                confidence="Tentative",
                 category="Security Headers",
                 owasp="A05:2021 - Security Misconfiguration",
                 cwe=["CWE-693"],
@@ -340,6 +410,8 @@ class CommonWebChecksMixin:
 
     def _check_clickjacking(self, response: requests.Response):
         """Check for clickjacking protection."""
+        if not self._is_html_response(response):
+            return
         xfo = response.headers.get("X-Frame-Options", "")
         csp = response.headers.get("Content-Security-Policy", "")
         if xfo or "frame-ancestors" in csp.lower():
@@ -351,6 +423,7 @@ class CommonWebChecksMixin:
             "No X-Frame-Options header or CSP frame-ancestors directive.",
             EvidenceBuilder.header_evidence("X-Frame-Options"),
             "Implement X-Frame-Options or CSP frame-ancestors to prevent clickjacking.",
+            confidence="Tentative",
             category="Security Headers",
             owasp="A05:2021 - Security Misconfiguration",
             cwe=["CWE-693"],
@@ -363,29 +436,39 @@ class CommonWebChecksMixin:
         response: requests.Response,
     ):
         """Check for information disclosure."""
+        if not self._is_html_response(response):
+            return
         error_patterns = [
             r"error[:\s]+[\"']([^\"']+)[\"']",
             r"exception[:\s]+[\"']([^\"']+)[\"']",
             r"stack\s*trace",
             r"debug\s*info",
+            r"traceback",
         ]
 
+        content = js_content + html_content
+        matches = []
         for pattern in error_patterns:
-            if re.search(pattern, js_content + html_content, re.IGNORECASE):
-                self.add_enriched_vulnerability(
-                    "Information Disclosure",
-                    "Low",
-                    "Potential error information exposed",
-                    EvidenceBuilder.regex_pattern(pattern, "Error/debug pattern in response content"),
-                    "Review error handling and information disclosure",
-                    category="Information Disclosure",
-                    owasp="A09:2021 - Security Logging and Monitoring Failures",
-                    cwe=["CWE-200"],
-                )
-                break
+            if re.search(pattern, content, re.IGNORECASE):
+                matches.append(pattern)
+
+        if len(matches) >= 2 or any("stack" in m or "traceback" in m for m in matches):
+            self.add_enriched_vulnerability(
+                "Information Disclosure",
+                "Low",
+                "Potential error information exposed",
+                EvidenceBuilder.regex_pattern(matches[0], "Error/debug pattern in response content"),
+                "Review error handling and information disclosure",
+                confidence="Tentative",
+                category="Information Disclosure",
+                owasp="A09:2021 - Security Logging and Monitoring Failures",
+                cwe=["CWE-200"],
+            )
 
     def _check_reflected_input(self, url: str, response: requests.Response, html_content: str):
         """Check for reflected input (potential XSS)."""
+        if not self._is_html_response(response):
+            return
         parsed = urlparse(url)
         params = parse_qs(parsed.query)
 
@@ -402,6 +485,7 @@ class CommonWebChecksMixin:
                         f"Input parameter '{param}' is reflected in response",
                         evidence,
                         "Implement output encoding and input validation",
+                        confidence="Tentative",
                         category="Cross-Site Scripting",
                         owasp="A03:2021 - Injection",
                         cwe=["CWE-79"],

@@ -94,7 +94,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
         self._check_cacheable_https(response, url)
         self._check_open_redirection(js_content)
         self._check_ajax_header_manipulation(js_content)
-        self._check_hsts(response)
+        self._check_hsts(response, url)
         self._check_content_type_options(response)
         self._check_referrer_policy(response)
         self._check_permissions_policy(response)
@@ -770,6 +770,8 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
 
     def _check_csp_policy(self, response: requests.Response):
         """Check Content Security Policy"""
+        if hasattr(self, "_is_html_response") and not self._is_html_response(response):
+            return
         csp = response.headers.get("Content-Security-Policy", "")
         if not csp:
             self.add_enriched_vulnerability(
@@ -873,6 +875,8 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
 
     def _check_clickjacking(self, response: requests.Response):
         """Check for clickjacking protection"""
+        if hasattr(self, "_is_html_response") and not self._is_html_response(response):
+            return
         xfo = response.headers.get("X-Frame-Options", "")
         if not xfo:
             self.add_enriched_vulnerability(
@@ -1189,8 +1193,12 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     )
                 break
 
-    def _check_hsts(self, response: requests.Response):
+    def _check_hsts(self, response: requests.Response, url: str = ""):
         """Check HSTS implementation"""
+        if url and not url.lower().startswith("https://"):
+            return
+        if hasattr(self, "_is_html_response") and not self._is_html_response(response):
+            return
         hsts = response.headers.get("Strict-Transport-Security", "")
         if not hsts:
             self.add_enriched_vulnerability(
@@ -1199,6 +1207,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                 "No HSTS header found",
                 [],  # Pass evidence as 4th positional parameter
                 "Implement HTTP Strict Transport Security",
+                confidence="Tentative",
                 category="Security Headers",
                 owasp="A05:2021 - Security Misconfiguration",
                 cwe=["CWE-523"],
@@ -1221,7 +1230,13 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
         else:
             # Check for weak HSTS - highlight the actual HSTS header
             hsts_lower = hsts.lower()
-            if "max-age=0" in hsts_lower or ("max-age=" in hsts_lower and int(hsts_lower.split("max-age=")[1].split(";")[0]) < 31536000):
+            max_age = None
+            if "max-age=" in hsts_lower:
+                try:
+                    max_age = int(hsts_lower.split("max-age=")[1].split(";")[0])
+                except (ValueError, IndexError):
+                    max_age = None
+            if "max-age=0" in hsts_lower or (max_age is not None and max_age < 31536000):
                 hsts_evidence = {
                     "type": "exact",
                     "pattern": f"Strict-Transport-Security: {hsts}",
@@ -1233,6 +1248,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     f"HSTS has weak max-age: {hsts[:50]}...",
                     hsts_evidence,  # Pass evidence as 4th positional parameter
                     "Set max-age to at least 31536000 (1 year)",
+                    confidence="Tentative",
                     category="Security Headers",
                     owasp="A05:2021 - Security Misconfiguration",
                     cwe=["CWE-523"],
@@ -1254,6 +1270,8 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
 
     def _check_content_type_options(self, response: requests.Response):
         """Check X-Content-Type-Options"""
+        if hasattr(self, "_is_html_response") and not self._is_html_response(response):
+            return
         xcto = response.headers.get("X-Content-Type-Options", "")
         if xcto != "nosniff":
             if xcto:
@@ -1267,10 +1285,11 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                 
             self.add_enriched_vulnerability(
                 "Missing X-Content-Type-Options",
-                "Low",
+                "Info",
                 "X-Content-Type-Options header missing or incorrect",
                 xcto_evidence,  # Pass evidence as 4th positional parameter
                 "Set X-Content-Type-Options: nosniff",
+                confidence="Tentative",
                 category="Security Headers",
                 owasp="A05:2021 - Security Misconfiguration",
                 cwe=["CWE-173"],
@@ -1293,6 +1312,8 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
 
     def _check_referrer_policy(self, response: requests.Response):
         """Check Referrer-Policy header"""
+        if hasattr(self, "_is_html_response") and not self._is_html_response(response):
+            return
         rp = response.headers.get("Referrer-Policy", "")
         if not rp:
             self.add_enriched_vulnerability(
@@ -1336,6 +1357,8 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
 
     def _check_permissions_policy(self, response: requests.Response):
         """Check Permissions-Policy header"""
+        if hasattr(self, "_is_html_response") and not self._is_html_response(response):
+            return
         pp = response.headers.get("Permissions-Policy", "")
         if not pp:
             self.add_enriched_vulnerability(
@@ -1363,6 +1386,8 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
 
     def _check_other_security_headers(self, response: requests.Response):
         """Check for other common security headers"""
+        if hasattr(self, "_is_html_response") and not self._is_html_response(response):
+            return
         headers = response.headers
         
         # X-XSS-Protection

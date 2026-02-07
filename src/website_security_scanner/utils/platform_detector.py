@@ -22,6 +22,7 @@ class AdvancedPlatformDetector:
     
     def __init__(self, session: requests.Session):
         self.session = session
+        self.timeout_seconds = getattr(session, "default_timeout", 10) or 10
         
         # Platform signatures
         self.platform_signatures = {
@@ -107,7 +108,6 @@ class AdvancedPlatformDetector:
                 'content_patterns': [
                     r'data-wf-site',
                     r'data-wf-page',
-                    r'webflow',
                     r'uploads-ssl\.webflow\.com'
                 ],
                 'script_patterns': [
@@ -171,6 +171,67 @@ class AdvancedPlatformDetector:
                 ]
             }
         }
+
+        self.platform_aliases = {
+            "bubble.io": "bubble",
+            "airtable.com": "airtable",
+            "myshopify.com": "shopify",
+            "webflow.io": "webflow",
+            "wix.com": "wix",
+            "mendixcloud.com": "mendix",
+            "outsystems.dev": "outsystems",
+        }
+
+        self.strong_signals = {
+            "bubble.io": {
+                "headers": ["x-bubble-"],
+                "content": [r'_bubble_page_', r'__BUBBLE'],
+                "scripts": [r'_bubble_.*\.js'],
+                "meta": [r'generator.*bubble'],
+            },
+            "outsystems": {
+                "headers": ["x-outsystems-"],
+                "content": [r'outsystemsui', r'outsystemsnow', r'richwidgets'],
+                "scripts": [r'outsystems.*\.js', r'richwidgets.*\.js'],
+                "meta": [r'generator.*outsystems'],
+            },
+            "airtable.com": {
+                "headers": ["x-airtable-"],
+                "content": [r'airtable\.com/v0/', r'app[a-zA-Z0-9]{15}'],
+                "scripts": [r'api\.airtable\.com'],
+                "meta": [r'airtable.*embed'],
+            },
+            "shopify": {
+                "headers": ["x-shopify", "x-shopid"],
+                "content": [r'myshopify\.com', r'shopify-checkout-api-token'],
+                "scripts": [r'cdn\.shopify\.com/.*\.js'],
+                "meta": [r'generator.*shopify'],
+            },
+            "webflow": {
+                "headers": ["x-webflow-id"],
+                "content": [r'data-wf-site', r'data-wf-page'],
+                "scripts": [r'webflow\.js'],
+                "meta": [r'generator.*webflow'],
+            },
+            "wix": {
+                "headers": ["x-wix-"],
+                "content": [r'wixbisession', r'wixrenderer'],
+                "scripts": [r'wixstatic\.com/.*\.js', r'parastorage\.com/.*\.js'],
+                "meta": [r'generator.*wix'],
+            },
+            "mendix": {
+                "headers": ["x-mendix"],
+                "content": [r'/mxclientsystem/', r'window\.mx'],
+                "scripts": [r'mxclientsystem/.*\.js', r'mxui/.*\.js'],
+                "meta": [r'generator.*mendix'],
+            },
+            "mern": {
+                "headers": ["x-powered-by: express"],
+                "content": [r'create-react-app'],
+                "scripts": [r'react-dom.*\.js'],
+                "meta": [r'generator.*react'],
+            },
+        }
     
     def detect_platform_advanced(self, url: str, platform_hint: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -201,49 +262,86 @@ class AdvancedPlatformDetector:
         
         try:
             # Fetch the page
-            response = self.session.get(url, timeout=10)
-            soup = BeautifulSoup(response.text, 'html.parser')
+            response = self.session.get(url, timeout=self.timeout_seconds)
+            if response.status_code >= 400:
+                raise ValueError(f"HTTP {response.status_code} for {url}")
+            content_type = response.headers.get("Content-Type", "").lower()
+            is_html = (
+                not content_type
+                or "text/html" in content_type
+                or "application/xhtml+xml" in content_type
+            )
+            soup = BeautifulSoup(response.text if is_html else "", 'html.parser')
             
             # Method 1: Header-based detection
             header_results = self._detect_by_headers(response)
             
             # Method 2: Content-based detection  
-            content_results = self._detect_by_content(soup)
+            content_results = self._detect_by_content(soup) if is_html else {}
             
             # Method 3: Script-based detection
-            script_results = self._detect_by_scripts(soup)
+            script_results = self._detect_by_scripts(soup) if is_html else {}
             
             # Method 4: Meta tag detection
-            meta_results = self._detect_by_meta(soup)
+            meta_results = self._detect_by_meta(soup) if is_html else {}
             
             # Combine results
             all_results = {}
+            validation = {}
             for platform in self.platform_signatures.keys():
                 score = 0
                 evidence = []
+                evidence_types = set()
                 
                 # Combine scores from all methods
                 if platform in header_results:
                     score += header_results[platform]['score']
                     evidence.extend(header_results[platform]['evidence'])
+                    evidence_types.add("headers")
                 
                 if platform in content_results:
                     score += content_results[platform]['score']
                     evidence.extend(content_results[platform]['evidence'])
+                    evidence_types.add("content")
                 
                 if platform in script_results:
                     score += script_results[platform]['score']
                     evidence.extend(script_results[platform]['evidence'])
+                    evidence_types.add("scripts")
                 
                 if platform in meta_results:
                     score += meta_results[platform]['score']
                     evidence.extend(meta_results[platform]['evidence'])
+                    evidence_types.add("meta")
+
+                strong_signal = self._has_strong_signal(platform, response, soup)
+                if strong_signal:
+                    score += 20
+
+                hint_match = bool(
+                    platform_hint and platform.lower() == platform_hint.lower()
+                )
+                if hint_match:
+                    score += 15
+                    evidence_types.add("domain_hint")
+
+                # Validation gating to reduce false positives
+                if not strong_signal and not hint_match and len(evidence_types) < 2:
+                    continue
+                if platform == "mern" and not strong_signal:
+                    continue
                 
                 if score > 0:
                     all_results[platform] = {
                         'score': score,
                         'evidence': evidence,
-                        'confidence': self._calculate_confidence(score)
+                        'confidence': self._calculate_confidence(score),
+                        'evidence_types': sorted(evidence_types),
+                        'strong_signal': strong_signal,
+                    }
+                    validation[platform] = {
+                        "evidence_types": sorted(evidence_types),
+                        "strong_signal": strong_signal,
                     }
             
             # Sort by score
@@ -252,13 +350,15 @@ class AdvancedPlatformDetector:
             detection_result['detected_platforms'] = [platform for platform, _ in sorted_platforms]
             detection_result['confidence_scores'] = {platform: data['confidence'] for platform, data in sorted_platforms}
             detection_result['evidence'] = {platform: data['evidence'] for platform, data in sorted_platforms}
+            detection_result['validation'] = validation
             
-            # Apply platform hint if provided
+            # Apply platform hint if provided (final confidence bump)
             if platform_hint and platform_hint.lower() in [p.lower() for p in detection_result['detected_platforms']]:
-                # Boost confidence for hinted platform
                 for platform in detection_result['detected_platforms']:
                     if platform.lower() == platform_hint.lower():
-                        detection_result['confidence_scores'][platform] = min(100, detection_result['confidence_scores'][platform] + 20)
+                        detection_result['confidence_scores'][platform] = min(
+                            100, detection_result['confidence_scores'][platform] + 10
+                        )
                         break
             
         except Exception as e:
@@ -289,6 +389,46 @@ class AdvancedPlatformDetector:
         except Exception:
             return None
         return None
+
+    def _header_pattern_matches(self, header_pattern: str, header: str, value: str) -> bool:
+        pattern = header_pattern.lower()
+        header_lower = header.lower()
+        value_lower = str(value).lower()
+        if ":" in pattern:
+            name_part, value_part = pattern.split(":", 1)
+            return name_part.strip() in header_lower and value_part.strip() in value_lower
+        return pattern in header_lower or pattern in value_lower
+
+    def _has_strong_signal(
+        self, platform: str, response: requests.Response, soup: BeautifulSoup
+    ) -> bool:
+        rules = self.strong_signals.get(platform, {})
+        if not rules:
+            return False
+
+        # Header signals
+        for pattern in rules.get("headers", []):
+            for header, value in response.headers.items():
+                if self._header_pattern_matches(pattern, header, value):
+                    return True
+
+        html = str(soup)
+        # Content signals
+        for pattern in rules.get("content", []):
+            if re.search(pattern, html, re.IGNORECASE):
+                return True
+
+        # Script signals
+        for pattern in rules.get("scripts", []):
+            if re.search(pattern, html, re.IGNORECASE):
+                return True
+
+        # Meta signals
+        for pattern in rules.get("meta", []):
+            if re.search(pattern, html, re.IGNORECASE):
+                return True
+
+        return False
     
     def _detect_by_headers(self, response: requests.Response) -> Dict[str, Dict]:
         """Detect platform by HTTP headers."""
@@ -300,7 +440,7 @@ class AdvancedPlatformDetector:
             
             for header_pattern in signatures['headers']:
                 for header, value in response.headers.items():
-                    if header_pattern.lower() in header.lower():
+                    if self._header_pattern_matches(header_pattern, header, value):
                         score += 30
                         evidence.append(f"Header: {header}: {value}")
             
@@ -315,7 +455,7 @@ class AdvancedPlatformDetector:
     def _detect_by_content(self, soup: BeautifulSoup) -> Dict[str, Dict]:
         """Detect platform by page content."""
         results = {}
-        page_text = soup.get_text().lower()
+        page_text = str(soup)
         
         for platform, signatures in self.platform_signatures.items():
             score = 0
@@ -386,7 +526,7 @@ class AdvancedPlatformDetector:
         return results
     
     # Minimum confidence threshold for platform detection (percentage)
-    MIN_CONFIDENCE_THRESHOLD = 30
+    MIN_CONFIDENCE_THRESHOLD = 40
     
     # High confidence threshold for automatic selection
     HIGH_CONFIDENCE_THRESHOLD = 70

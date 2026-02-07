@@ -40,6 +40,7 @@ from .analyzers import (
     get_analyzer_for_platform,
     analyze_platform_security,
 )
+from .analyzers.reports import SecurityReportGenerator
 from .report_generator import ProfessionalReportGenerator
 from .result_transformer import transform_results_for_professional_report
 from .utils.platform_detector import AdvancedPlatformDetector
@@ -48,6 +49,8 @@ from .utils.rate_limiter import RateLimiter, ThrottledSession
 from .models.vulnerability import EnhancedVulnerability, ScanResult
 from .plugins.plugin_manager import PluginManager
 from .utils.parallel_scanner import ParallelScanner, create_parallel_scan
+from .config.constants import DEFAULT_REQUEST_TIMEOUT, SEVERITY_LEVELS, CONFIDENCE_LEVELS
+from .verifier import VulnerabilityVerifier
 
 
 class LowCodeSecurityScanner:
@@ -56,10 +59,14 @@ class LowCodeSecurityScanner:
         enable_plugins: bool = True,
         enable_parallel: bool = True,
         verify_ssl: bool = True,
-        timeout_seconds: int = 10,
+        timeout_seconds: int = DEFAULT_REQUEST_TIMEOUT,
         scan_depth: int = 1,
         fetch_external_js_assets: bool = True,
         max_external_js_assets: int = 8,
+        allow_third_party_js: bool = False,
+        max_js_bytes: int = 512 * 1024,
+        active_verification: bool = True,
+        evidence_verification: bool = True,
         min_interval_seconds: float = 0.2,
         max_requests_per_minute: int = 60,
     ):
@@ -73,6 +80,7 @@ class LowCodeSecurityScanner:
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             }
         )
+        self.session.default_timeout = int(timeout_seconds)
         # Configure SSL verification
         self.verify_ssl = verify_ssl
         if not verify_ssl:
@@ -93,10 +101,13 @@ class LowCodeSecurityScanner:
             "verify_ssl": verify_ssl,
             "enable_plugins": enable_plugins,
             "enable_parallel": enable_parallel,
-            "active_verification": True,
+            "active_verification": bool(active_verification),
+            "evidence_verification": bool(evidence_verification),
             "scan_depth": int(scan_depth),
             "fetch_external_js_assets": bool(fetch_external_js_assets),
             "max_external_js_assets": int(max_external_js_assets),
+            "allow_third_party_js": bool(allow_third_party_js),
+            "max_js_bytes": int(max_js_bytes),
             "min_interval_seconds": float(min_interval_seconds),
             "max_requests_per_minute": int(max_requests_per_minute),
         }
@@ -135,6 +146,7 @@ class LowCodeSecurityScanner:
             "scan_profile_hash": scan_profile_hash,
             "dataset_version": os.environ.get("DATASET_VERSION", "N/A"),
             "git_commit": os.environ.get("GIT_COMMIT", "N/A"),
+            "scan_warnings": [],
         }
 
         try:
@@ -154,6 +166,37 @@ class LowCodeSecurityScanner:
 
             # SSL/TLS analysis
             target_results["ssl_analysis"] = self.analyze_ssl(url)
+
+            if not self._is_scannable_response(response):
+                target_results["scan_warnings"].append({
+                    "message": "Response not suitable for content analysis",
+                    "status_code": response.status_code,
+                    "content_type": response.headers.get("Content-Type", ""),
+                })
+                target_results["analysis_skipped"] = True
+                target_results["verification_summary"] = {
+                    "total_vulnerabilities": 0,
+                    "verified_vulnerabilities": 0,
+                    "high_confidence_verifications": 0,
+                    "verification_rate": 0.0,
+                    "disabled": True,
+                }
+                target_results["evidence_verification_summary"] = {
+                    "total_vulnerabilities": 0,
+                    "verified": 0,
+                    "stale": 0,
+                    "unverified": 0,
+                    "failed": 0,
+                    "live_checked": 0,
+                    "verification_rate": 0.0,
+                    "disabled": True,
+                }
+                report_generator = SecurityReportGenerator()
+                target_results["executive_summary"] = report_generator.generate_executive_summary(
+                    target_results
+                )
+                target_results["recommendations_matrix"] = report_generator.generate_recommendations_matrix([])
+                return target_results
 
             # Content analysis based on platform type
             if target_results["platform_type"] == "bubble":
@@ -178,9 +221,54 @@ class LowCodeSecurityScanner:
                 self.check_common_vulnerabilities(url, response)
             )
 
+            # Normalize and verify vulnerabilities
+            target_results["vulnerabilities"] = self._normalize_vulnerabilities(
+                target_results.get("vulnerabilities", []), url
+            )
+
+            if self.scan_profile.get("active_verification", True):
+                target_results["verification_summary"] = self._apply_active_verification(
+                    target_results["vulnerabilities"]
+                )
+            else:
+                target_results["verification_summary"] = {
+                    "total_vulnerabilities": len(target_results["vulnerabilities"]),
+                    "verified_vulnerabilities": 0,
+                    "high_confidence_verifications": 0,
+                    "verification_rate": 0.0,
+                    "disabled": True,
+                }
+
+            if self.scan_profile.get("evidence_verification", True):
+                verified_vulns, evidence_summary = verify_vulnerabilities(
+                    target_results["vulnerabilities"], self.session, url, response
+                )
+                target_results["vulnerabilities"] = verified_vulns
+                target_results["evidence_verification_summary"] = evidence_summary
+            else:
+                target_results["evidence_verification_summary"] = {
+                    "total_vulnerabilities": len(target_results["vulnerabilities"]),
+                    "verified": 0,
+                    "stale": 0,
+                    "unverified": len(target_results["vulnerabilities"]),
+                    "failed": 0,
+                    "live_checked": 0,
+                    "verification_rate": 0.0,
+                    "disabled": True,
+                }
+
             # Generate security recommendations
             target_results["recommendations"] = self.generate_recommendations(
                 target_results
+            )
+
+            # Consistent executive summary and recommendations matrix
+            report_generator = SecurityReportGenerator()
+            target_results["executive_summary"] = report_generator.generate_executive_summary(
+                target_results
+            )
+            target_results["recommendations_matrix"] = report_generator.generate_recommendations_matrix(
+                target_results.get("vulnerabilities", [])
             )
 
         except requests.exceptions.RequestException as e:
@@ -338,31 +426,46 @@ class LowCodeSecurityScanner:
             platform, confidence = self.platform_detector.get_primary_platform(detection_result)
             
             if platform and confidence >= self.platform_detector.MIN_CONFIDENCE_THRESHOLD:
-                print(f"[+] Platform detected: {platform} ({confidence}% confidence)")
-                return platform
+                normalized = self._normalize_platform_type(platform)
+                print(f"[+] Platform detected: {normalized} ({confidence}% confidence)")
+                return normalized
             elif platform:
                 print(f"[!] Platform detection uncertain: {platform} ({confidence}% confidence) - using generic scanner")
                 return 'generic'
             else:
                 # Fallback to basic detection
-                return self._basic_platform_identification(url)
+                return self._normalize_platform_type(self._basic_platform_identification(url))
                 
         except Exception as e:
             print(f"[!] Platform detection failed: {e}")
             self._last_platform_detection = {"error": str(e), "detected_platforms": ["unknown"], "confidence_scores": {"unknown": 0}}
-            return self._basic_platform_identification(url)
+            return self._normalize_platform_type(self._basic_platform_identification(url))
+
+    def _normalize_platform_type(self, platform: str) -> str:
+        """Normalize detected platform names to scanner canonical labels."""
+        if not platform:
+            return "generic"
+        platform_lower = platform.lower()
+        alias_map = getattr(self.platform_detector, "platform_aliases", {}) or {}
+        if platform_lower in alias_map:
+            return alias_map[platform_lower]
+        return platform_lower
     
     def _basic_platform_identification(self, url):
         """Fallback basic platform identification"""
         try:
-            response = self.session.get(url, timeout=10)
+            response = self.session.get(
+                url,
+                timeout=self.scan_profile.get("timeout_seconds", DEFAULT_REQUEST_TIMEOUT),
+                verify=self.verify_ssl,
+            )
             content = response.text.lower()
             
             if 'bubble.io' in content or '_bubble_page_' in content:
                 return 'bubble'
             elif 'outsystems' in content or 'richwidgets' in content:
                 return 'outsystems'
-            elif 'airtable.com' in content or 'app[a-zA-Z0-9]{15}' in content:
+            elif 'airtable.com' in content or re.search(r'app[a-zA-Z0-9]{15}', content):
                 return 'airtable'
             elif 'myshopify.com' in content or 'cdn.shopify.com' in content:
                 return 'shopify'
@@ -376,6 +479,94 @@ class LowCodeSecurityScanner:
                 return 'generic'
         except:
             return 'generic'
+
+    def _is_scannable_response(self, response: requests.Response) -> bool:
+        if response is None:
+            return False
+        if response.status_code >= 400:
+            return False
+        content_type = response.headers.get("Content-Type", "").lower()
+        if not content_type:
+            return True
+        return "text/html" in content_type or "application/xhtml+xml" in content_type
+
+    def _normalize_severity(self, severity: str) -> str:
+        if not severity:
+            return "Info"
+        sev_map = {k.lower(): k for k in SEVERITY_LEVELS.keys()}
+        return sev_map.get(str(severity).lower(), "Info")
+
+    def _normalize_confidence(self, confidence: str) -> str:
+        if not confidence:
+            return "Tentative"
+        conf_map = {k.lower(): k for k in CONFIDENCE_LEVELS.keys()}
+        return conf_map.get(str(confidence).lower(), "Tentative")
+
+    def _normalize_vulnerabilities(self, vulnerabilities: List[Dict[str, Any]], url: str) -> List[Dict[str, Any]]:
+        normalized: List[Dict[str, Any]] = []
+        for vuln in vulnerabilities:
+            v = vuln.copy() if isinstance(vuln, dict) else {"description": str(vuln)}
+            v["type"] = v.get("type") or v.get("title") or "Unknown"
+            v["severity"] = self._normalize_severity(v.get("severity", "Info"))
+            v["confidence"] = self._normalize_confidence(v.get("confidence", "Tentative"))
+            v.setdefault("description", "")
+            v.setdefault("recommendation", "")
+            v.setdefault("category", "General")
+            v.setdefault("owasp", "N/A")
+            v.setdefault("cwe", [])
+            v.setdefault("url", url)
+            v.setdefault("parameter", "")
+            v.setdefault("timestamp", datetime.now().isoformat())
+            if "evidence" not in v:
+                v["evidence"] = ""
+            if "verification" not in v or not isinstance(v.get("verification"), dict):
+                v["verification"] = {
+                    "verified": False,
+                    "confidence": "tentative",
+                    "method": "static_analysis",
+                    "reason": "Not verified",
+                }
+            if "evidence_verification" not in v or not isinstance(v.get("evidence_verification"), dict):
+                v["evidence_verification"] = {}
+            normalized.append(v)
+        return normalized
+
+    def _summarize_verification(self, vulnerabilities: List[Dict[str, Any]]) -> Dict[str, Any]:
+        total = len(vulnerabilities)
+        verified = 0
+        high_confidence = 0
+        for vuln in vulnerabilities:
+            verification = vuln.get("verification", {}) or {}
+            if verification.get("verified"):
+                verified += 1
+            conf = str(verification.get("confidence", "")).lower()
+            if conf in {"high", "firm", "certain"}:
+                high_confidence += 1
+        rate = (verified / total * 100) if total else 0.0
+        return {
+            "total_vulnerabilities": total,
+            "verified_vulnerabilities": verified,
+            "high_confidence_verifications": high_confidence,
+            "verification_rate": round(rate, 2),
+        }
+
+    def _apply_active_verification(self, vulnerabilities: List[Dict[str, Any]]) -> Dict[str, Any]:
+        verifier = VulnerabilityVerifier(self.session)
+        if hasattr(verifier, "verification_timeout"):
+            verifier.verification_timeout = self.scan_profile.get(
+                "timeout_seconds", DEFAULT_REQUEST_TIMEOUT
+            )
+        for i, vuln in enumerate(vulnerabilities):
+            verification = vuln.get("verification", {}) or {}
+            if verification.get("method") not in {"static_analysis", "not_attempted", "pattern_match_only"}:
+                continue
+            result = verifier.verify_vulnerability(vuln)
+            if isinstance(result, dict):
+                result["confidence"] = self._normalize_confidence(result.get("confidence", vuln.get("confidence")))
+                vulnerabilities[i]["verification"] = result
+                if result.get("verified"):
+                    vulnerabilities[i]["confidence"] = "Certain"
+        return self._summarize_verification(vulnerabilities)
 
     def analyze_security_headers(self, headers):
         """Analyze HTTP security headers"""
@@ -445,18 +636,6 @@ class LowCodeSecurityScanner:
         analyzer = BubbleAnalyzer(self.session)
         self._apply_scan_profile_to_analyzer(analyzer)
         results = analyzer.analyze(url, response, soup)
-
-        # Perform active verification of found vulnerabilities
-        verification_summary = analyzer.verify_vulnerabilities(url)
-        
-        # Perform evidence verification for all vulnerabilities
-        vulnerabilities = results.get("vulnerabilities", [])
-        if vulnerabilities:
-            verified_vulns, evidence_summary = verify_vulnerabilities(
-                vulnerabilities, self.session, url, response
-            )
-            results["vulnerabilities"] = verified_vulns
-            results["evidence_verification_summary"] = evidence_summary
         
         # Map BubbleAnalyzer findings to the format expected by scanner
         return {
@@ -467,8 +646,7 @@ class LowCodeSecurityScanner:
                 "privacy_rules": results.get("privacy_rules", []),
             },
             "vulnerabilities": results.get("vulnerabilities", []),
-            "verification_summary": verification_summary,
-            "evidence_verification_summary": results.get("evidence_verification_summary", {}),
+            "scan_warnings": getattr(analyzer, "scan_warnings", []),
         }
 
     def analyze_outsystems_app(self, url, response):
@@ -479,18 +657,6 @@ class LowCodeSecurityScanner:
         self._apply_scan_profile_to_analyzer(analyzer)
         results = analyzer.analyze(url, response, soup)
 
-        # Perform active verification of found vulnerabilities
-        verification_summary = analyzer.verify_vulnerabilities(url)
-        
-        # Perform evidence verification for all vulnerabilities
-        vulnerabilities = results.get("vulnerabilities", [])
-        if vulnerabilities:
-            verified_vulns, evidence_summary = verify_vulnerabilities(
-                vulnerabilities, self.session, url, response
-            )
-            results["vulnerabilities"] = verified_vulns
-            results["evidence_verification_summary"] = evidence_summary
-
         return {
             "outsystems_specific": {
                 "rest_apis_found": results.get("rest_apis", []),
@@ -498,8 +664,7 @@ class LowCodeSecurityScanner:
                 "entities": results.get("entities", []),
             },
             "vulnerabilities": results.get("vulnerabilities", []),
-            "verification_summary": verification_summary,
-            "evidence_verification_summary": results.get("evidence_verification_summary", {}),
+            "scan_warnings": getattr(analyzer, "scan_warnings", []),
         }
 
     def analyze_airtable_app(self, url, response):
@@ -510,18 +675,6 @@ class LowCodeSecurityScanner:
         self._apply_scan_profile_to_analyzer(analyzer)
         results = analyzer.analyze(url, response, soup)
 
-        # Perform active verification of found vulnerabilities
-        verification_summary = analyzer.verify_vulnerabilities(url)
-        
-        # Perform evidence verification for all vulnerabilities
-        vulnerabilities = results.get("vulnerabilities", [])
-        if vulnerabilities:
-            verified_vulns, evidence_summary = verify_vulnerabilities(
-                vulnerabilities, self.session, url, response
-            )
-            results["vulnerabilities"] = verified_vulns
-            results["evidence_verification_summary"] = evidence_summary
-
         return {
             "airtable_specific": {
                 "base_id_exposure": results.get("base_ids", []),
@@ -529,8 +682,7 @@ class LowCodeSecurityScanner:
                 "table_structure_exposure": results.get("table_ids", []),
             },
             "vulnerabilities": results.get("vulnerabilities", []),
-            "verification_summary": verification_summary,
-            "evidence_verification_summary": results.get("evidence_verification_summary", {}),
+            "scan_warnings": getattr(analyzer, "scan_warnings", []),
         }
 
     def analyze_generic_app(self, url, response):
@@ -541,23 +693,10 @@ class LowCodeSecurityScanner:
         self._apply_scan_profile_to_analyzer(analyzer)
         results = analyzer.analyze(url, response, soup)
 
-        # Perform active verification of found vulnerabilities
-        verification_summary = analyzer.verify_vulnerabilities(url)
-        
-        # Perform evidence verification for all vulnerabilities
-        vulnerabilities = results.get("vulnerabilities", [])
-        if vulnerabilities:
-            verified_vulns, evidence_summary = verify_vulnerabilities(
-                vulnerabilities, self.session, url, response
-            )
-            results["vulnerabilities"] = verified_vulns
-            results["evidence_verification_summary"] = evidence_summary
-
         return {
             "generic_analysis": results.get("generic_findings", {}),
             "vulnerabilities": results.get("vulnerabilities", []),
-            "verification_summary": verification_summary,
-            "evidence_verification_summary": results.get("evidence_verification_summary", {}),
+            "scan_warnings": getattr(analyzer, "scan_warnings", []),
         }
 
     def analyze_shopify_app(self, url, response):
@@ -568,20 +707,10 @@ class LowCodeSecurityScanner:
         self._apply_scan_profile_to_analyzer(analyzer)
         results = analyzer.analyze(url, response, soup)
 
-        verification_summary = analyzer.verify_vulnerabilities(url)
-        vulnerabilities = results.get("vulnerabilities", [])
-        if vulnerabilities:
-            verified_vulns, evidence_summary = verify_vulnerabilities(
-                vulnerabilities, self.session, url, response
-            )
-            results["vulnerabilities"] = verified_vulns
-            results["evidence_verification_summary"] = evidence_summary
-
         return {
             "shopify_specific": results.get("shopify_findings", {}),
             "vulnerabilities": results.get("vulnerabilities", []),
-            "verification_summary": verification_summary,
-            "evidence_verification_summary": results.get("evidence_verification_summary", {}),
+            "scan_warnings": getattr(analyzer, "scan_warnings", []),
         }
 
     def analyze_webflow_app(self, url, response):
@@ -592,20 +721,10 @@ class LowCodeSecurityScanner:
         self._apply_scan_profile_to_analyzer(analyzer)
         results = analyzer.analyze(url, response, soup)
 
-        verification_summary = analyzer.verify_vulnerabilities(url)
-        vulnerabilities = results.get("vulnerabilities", [])
-        if vulnerabilities:
-            verified_vulns, evidence_summary = verify_vulnerabilities(
-                vulnerabilities, self.session, url, response
-            )
-            results["vulnerabilities"] = verified_vulns
-            results["evidence_verification_summary"] = evidence_summary
-
         return {
             "webflow_specific": results.get("webflow_findings", {}),
             "vulnerabilities": results.get("vulnerabilities", []),
-            "verification_summary": verification_summary,
-            "evidence_verification_summary": results.get("evidence_verification_summary", {}),
+            "scan_warnings": getattr(analyzer, "scan_warnings", []),
         }
 
     def analyze_wix_app(self, url, response):
@@ -616,20 +735,10 @@ class LowCodeSecurityScanner:
         self._apply_scan_profile_to_analyzer(analyzer)
         results = analyzer.analyze(url, response, soup)
 
-        verification_summary = analyzer.verify_vulnerabilities(url)
-        vulnerabilities = results.get("vulnerabilities", [])
-        if vulnerabilities:
-            verified_vulns, evidence_summary = verify_vulnerabilities(
-                vulnerabilities, self.session, url, response
-            )
-            results["vulnerabilities"] = verified_vulns
-            results["evidence_verification_summary"] = evidence_summary
-
         return {
             "wix_specific": results.get("wix_findings", {}),
             "vulnerabilities": results.get("vulnerabilities", []),
-            "verification_summary": verification_summary,
-            "evidence_verification_summary": results.get("evidence_verification_summary", {}),
+            "scan_warnings": getattr(analyzer, "scan_warnings", []),
         }
 
     def analyze_mendix_app(self, url, response):
@@ -640,20 +749,10 @@ class LowCodeSecurityScanner:
         self._apply_scan_profile_to_analyzer(analyzer)
         results = analyzer.analyze(url, response, soup)
 
-        verification_summary = analyzer.verify_vulnerabilities(url)
-        vulnerabilities = results.get("vulnerabilities", [])
-        if vulnerabilities:
-            verified_vulns, evidence_summary = verify_vulnerabilities(
-                vulnerabilities, self.session, url, response
-            )
-            results["vulnerabilities"] = verified_vulns
-            results["evidence_verification_summary"] = evidence_summary
-
         return {
             "mendix_specific": results.get("mendix_findings", {}),
             "vulnerabilities": results.get("vulnerabilities", []),
-            "verification_summary": verification_summary,
-            "evidence_verification_summary": results.get("evidence_verification_summary", {}),
+            "scan_warnings": getattr(analyzer, "scan_warnings", []),
         }
 
     def check_common_vulnerabilities(self, url, response):
@@ -674,6 +773,7 @@ class LowCodeSecurityScanner:
                         "type": "Mixed Content",
                         "severity": "Medium",
                         "description": f"Found {len(http_resources)} HTTP resources on HTTPS page",
+                        "confidence": "Tentative",
                     }
                 )
 
@@ -685,6 +785,7 @@ class LowCodeSecurityScanner:
                     "type": "Inline JavaScript",
                     "severity": "Low",
                     "description": f"Found {len(inline_scripts)} inline script blocks (potential CSP issues)",
+                    "confidence": "Tentative",
                 }
             )
 
@@ -696,6 +797,7 @@ class LowCodeSecurityScanner:
                     "type": "URL Parameters",
                     "severity": "Low",
                     "description": "URL contains parameters that should be tested for XSS/injection",
+                    "confidence": "Tentative",
                 }
             )
 
@@ -705,12 +807,29 @@ class LowCodeSecurityScanner:
         """Apply scan profile settings to analyzer instances."""
         analyzer.fetch_external_js_assets = self.scan_profile.get("fetch_external_js_assets", True)
         analyzer.max_external_js_assets = self.scan_profile.get("max_external_js_assets", 8)
+        analyzer.allow_third_party_js = self.scan_profile.get("allow_third_party_js", False)
+        analyzer.max_js_bytes = self.scan_profile.get("max_js_bytes", 512 * 1024)
+        analyzer.timeout_seconds = self.scan_profile.get("timeout_seconds", DEFAULT_REQUEST_TIMEOUT)
+        analyzer.scan_depth = self.scan_profile.get("scan_depth", 1)
+        analyzer.verify_ssl = self.scan_profile.get("verify_ssl", True)
 
     def update_scan_profile(self, **kwargs) -> None:
         """Update scan profile values for the current scanner instance."""
         for key, value in kwargs.items():
             if value is not None:
                 self.scan_profile[key] = value
+        if hasattr(self.session, "default_timeout"):
+            try:
+                self.session.default_timeout = int(self.scan_profile.get("timeout_seconds", DEFAULT_REQUEST_TIMEOUT))
+            except (TypeError, ValueError):
+                pass
+        if hasattr(self, "platform_detector"):
+            try:
+                self.platform_detector.timeout_seconds = int(
+                    self.scan_profile.get("timeout_seconds", DEFAULT_REQUEST_TIMEOUT)
+                )
+            except (TypeError, ValueError):
+                pass
         if hasattr(self.session, "update_rate_limits"):
             self.session.update_rate_limits(
                 min_interval_seconds=self.scan_profile.get("min_interval_seconds"),

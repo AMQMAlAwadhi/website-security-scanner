@@ -99,10 +99,14 @@ class ThrottledSession(requests.Session):
     def __init__(self, rate_limiter: RateLimiter):
         super().__init__()
         self._rate_limiter = rate_limiter
+        self.default_timeout: Optional[float] = None
 
     def request(self, method, url, *args, **kwargs):
         if self._rate_limiter:
             self._rate_limiter.wait(url)
+        if "timeout" not in kwargs or kwargs.get("timeout") is None:
+            if self.default_timeout is not None:
+                kwargs["timeout"] = self.default_timeout
         return super().request(method, url, *args, **kwargs)
 
     def update_rate_limits(

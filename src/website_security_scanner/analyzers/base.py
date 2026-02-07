@@ -20,6 +20,7 @@ from bs4 import BeautifulSoup
 from ..exceptions import AnalysisError
 from ..utils.logger import get_logger
 from ..verifier import VulnerabilityVerifier
+from ..config.constants import SEVERITY_LEVELS, CONFIDENCE_LEVELS
 
 
 class BaseAnalyzer:
@@ -43,6 +44,16 @@ class BaseAnalyzer:
         self.session = session
         self.vulnerabilities: List[Dict[str, Any]] = []
         self.findings: Dict[str, Any] = {}
+        self.scan_warnings: List[Dict[str, Any]] = []
+
+        # Scan profile defaults (overridden by scanner)
+        self.timeout_seconds: int = getattr(session, "default_timeout", 10) or 10
+        self.scan_depth: int = 1
+        self.verify_ssl: bool = True
+        self.fetch_external_js_assets: bool = True
+        self.max_external_js_assets: int = 8
+        self.allow_third_party_js: bool = False
+        self.max_js_bytes: int = 512 * 1024
         
         # HTTP context tracking for enriched vulnerability reporting
         self._last_request: Optional[requests.PreparedRequest] = None
@@ -50,6 +61,44 @@ class BaseAnalyzer:
         
         # Logger for professional error handling and debugging
         self.logger = get_logger(self.__class__.__name__)
+
+    def _get_timeout_seconds(self, fallback: int = 10) -> int:
+        """Return the configured timeout (seconds) for HTTP requests."""
+        try:
+            return int(getattr(self, "timeout_seconds", fallback) or fallback)
+        except (TypeError, ValueError):
+            return fallback
+
+    def _record_warning(self, message: str, **details) -> None:
+        """Record a scan warning for incomplete or skipped checks."""
+        entry = {"message": message}
+        if details:
+            entry.update(details)
+        self.scan_warnings.append(entry)
+
+    def _is_html_response(self, response: Optional[requests.Response]) -> bool:
+        if response is None:
+            return False
+        if response.status_code >= 400:
+            return False
+        content_type = response.headers.get("Content-Type", "").lower()
+        if not content_type:
+            return True
+        return "text/html" in content_type or "application/xhtml+xml" in content_type
+
+    def _normalize_severity(self, severity: str) -> str:
+        """Normalize severity to a supported label."""
+        if not severity:
+            return "Info"
+        sev_map = {k.lower(): k for k in SEVERITY_LEVELS.keys()}
+        return sev_map.get(str(severity).lower(), "Info")
+
+    def _normalize_confidence(self, confidence: str) -> str:
+        """Normalize confidence to a supported label."""
+        if not confidence:
+            return "Tentative"
+        conf_map = {k.lower(): k for k in CONFIDENCE_LEVELS.keys()}
+        return conf_map.get(str(confidence).lower(), "Tentative")
 
     def analyze(
         self, url: str, response: requests.Response, soup: BeautifulSoup
@@ -224,6 +273,8 @@ class BaseAnalyzer:
             parameter: Affected parameter name (for verification)
             url: Target URL (for verification)
         """
+        severity = self._normalize_severity(severity)
+        confidence = self._normalize_confidence(confidence)
         vulnerability = {
             "type": vuln_type,
             "severity": severity,
@@ -269,6 +320,7 @@ class BaseAnalyzer:
         parameter: str = "",
         url: str = "",
         http_response: Optional[requests.Response] = None,
+        **extra_fields,
     ):
         """
         Add enriched vulnerability with comprehensive metadata and HTTP context.
@@ -301,6 +353,7 @@ class BaseAnalyzer:
             evidence_list = [evidence] if evidence else []
             evidence_str = evidence
         
+        confidence = self._normalize_confidence(confidence)
         # Call standard add_vulnerability to ensure consistent base behavior
         self.add_vulnerability(
             vuln_type,
@@ -321,6 +374,10 @@ class BaseAnalyzer:
         vuln["background"] = background or ""
         vuln["impact"] = impact or ""
         vuln["references"] = references or []
+
+        for key, value in (extra_fields or {}).items():
+            if key not in vuln:
+                vuln[key] = value
         
         # Add HTTP instance for professional Burp-style reporting
         if http_response is not None:
