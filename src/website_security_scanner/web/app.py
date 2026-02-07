@@ -25,7 +25,7 @@ from bs4 import BeautifulSoup
 
 # Import scanner components
 from website_security_scanner.main import LowCodeSecurityScanner
-from website_security_scanner.enhanced_report_generator import EnhancedReportGenerator
+from website_security_scanner.report_generator import ProfessionalReportGenerator
 from website_security_scanner.result_transformer import transform_results_for_professional_report
 
 # Global configuration - store runtime data under working directory by default
@@ -75,16 +75,10 @@ def create_app(config=None):
     except Exception as e:
         print(f"Error initializing SocketIO: {e}")
         return None, None
-    
-    # Initialize scanner components
-    try:
-        app.scanner = LowCodeSecurityScanner()
-        app.report_generator = EnhancedReportGenerator()
-        print("Scanner components initialized successfully")
-    except Exception as e:
-        print(f"Error initializing scanner components: {e}")
-        return None, None
-    
+
+    # Note: Scanner instances are created per-request for thread safety
+    # No global scanner initialization
+
     # Scan queue and history
     app.scan_queue = []
     app.scan_history = []
@@ -240,19 +234,36 @@ def register_routes(app):
     def api_scan_report(scan_id):
         """Generate and download HTML report for a scan."""
         result_file = Path(app.config['SCANS_FOLDER']) / f"{scan_id}.json"
-        
+
         if not result_file.exists():
             return jsonify({'error': 'Scan results not found'}), 404
-        
-        with open(result_file, 'r') as f:
-            results = json.load(f)
-        
-        # Generate report
-        report_path = Path(app.config['REPORTS_FOLDER']) / f"{scan_id}.html"
-        enhanced_results = transform_results_for_professional_report(results)
-        app.report_generator.generate_report(enhanced_results, str(report_path))
-        
-        return send_file(str(report_path), as_attachment=True, 
+
+        try:
+            with open(result_file, 'r') as f:
+                results = json.load(f)
+        except json.JSONDecodeError as e:
+            return jsonify({'error': f'Invalid scan results JSON: {str(e)}'}), 500
+        except Exception as e:
+            return jsonify({'error': f'Failed to read scan results: {str(e)}'}), 500
+
+        # Generate report with error handling
+        try:
+            report_path = Path(app.config['REPORTS_FOLDER']) / f"{scan_id}.html"
+            enhanced_results = transform_results_for_professional_report(results)
+            report_generator = ProfessionalReportGenerator()
+            report_generator.generate_report(enhanced_results, str(report_path))
+        except Exception as e:
+            # Send error via socketio if possible
+            try:
+                socketio.emit('report_error', {
+                    'scan_id': scan_id,
+                    'error': str(e)
+                })
+            except Exception:
+                pass
+            return jsonify({'error': f'Failed to generate report: {str(e)}'}), 500
+
+        return send_file(str(report_path), as_attachment=True,
                         download_name=f"security_report_{scan_id}.html")
     
     @app.route('/api/history', methods=['GET'])
@@ -395,16 +406,16 @@ def execute_scan(app, socketio, scan_id):
         if scan['id'] == scan_id:
             scan_job = scan
             break
-    
+
     if not scan_job:
         return
-    
+
     # Move to active scans
     app.scan_queue.remove(scan_job)
     scan_job['status'] = 'running'
     scan_job['started_at'] = datetime.now().isoformat()
     app.active_scans[scan_id] = scan_job
-    
+
     # Emit status update
     socketio.emit('scan_update', {
         'scan_id': scan_id,
@@ -412,8 +423,10 @@ def execute_scan(app, socketio, scan_id):
         'progress': 0,
         'message': 'Starting scan...'
     })
-    
+
     try:
+        # Create new scanner instance for thread safety
+        scanner = LowCodeSecurityScanner()
         url = scan_job['url']
         verify = scan_job.get('verify', False)
         deep_scan = scan_job.get('deep_scan', False)
@@ -425,17 +438,17 @@ def execute_scan(app, socketio, scan_id):
         profile_updates.setdefault('active_verification', bool(verify))
         profile_updates.setdefault('evidence_verification', bool(verify))
         if profile_updates:
-            app.scanner.update_scan_profile(**profile_updates)
+            scanner.update_scan_profile(**profile_updates)
             if 'verify_ssl' in profile_updates:
-                app.scanner.verify_ssl = bool(profile_updates.get('verify_ssl', True))
-        
+                scanner.verify_ssl = bool(profile_updates.get('verify_ssl', True))
+
         # Update progress
         socketio.emit('scan_update', {
             'scan_id': scan_id,
             'progress': 10,
             'message': 'Identifying platform...'
         })
-        
+
         # Perform scan with enhanced options
         if deep_scan:
             socketio.emit('scan_update', {
@@ -444,8 +457,8 @@ def execute_scan(app, socketio, scan_id):
                 'message': 'Performing deep scan...'
             })
             # Use enhanced scan method if available
-            if hasattr(app.scanner, 'enhanced_scan_target'):
-                results = app.scanner.enhanced_scan_target(url, use_parallel=True)
+            if hasattr(scanner, 'enhanced_scan_target'):
+                results = scanner.enhanced_scan_target(url, use_parallel=True)
                 # Convert to basic format for compatibility
                 results = {
                     'url': url,
@@ -458,10 +471,10 @@ def execute_scan(app, socketio, scan_id):
                     'performance_metrics': results.performance_metrics
                 }
             else:
-                results = app.scanner.scan_target(url)
+                results = scanner.scan_target(url)
         else:
-            results = app.scanner.scan_target(url)
-        
+            results = scanner.scan_target(url)
+
         # API Discovery if enabled
         if api_discovery:
             socketio.emit('scan_update', {
@@ -469,9 +482,9 @@ def execute_scan(app, socketio, scan_id):
                 'progress': 50,
                 'message': 'Discovering API endpoints...'
             })
-            
+
             # Add API discovery results
-            api_results = discover_api_endpoints(url, app.scanner.session)
+            api_results = discover_api_endpoints(url, scanner.session)
             if api_results:
                 results['api_endpoints'] = api_results
                 # Create vulnerabilities for exposed APIs

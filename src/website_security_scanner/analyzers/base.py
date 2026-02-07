@@ -19,8 +19,8 @@ from bs4 import BeautifulSoup
 
 from ..exceptions import AnalysisError
 from ..utils.logger import get_logger
+from ..utils.normalization import normalize_severity, normalize_confidence
 from ..verifier import VulnerabilityVerifier
-from ..config.constants import SEVERITY_LEVELS, CONFIDENCE_LEVELS
 
 
 class BaseAnalyzer:
@@ -85,20 +85,6 @@ class BaseAnalyzer:
         if not content_type:
             return True
         return "text/html" in content_type or "application/xhtml+xml" in content_type
-
-    def _normalize_severity(self, severity: str) -> str:
-        """Normalize severity to a supported label."""
-        if not severity:
-            return "Info"
-        sev_map = {k.lower(): k for k in SEVERITY_LEVELS.keys()}
-        return sev_map.get(str(severity).lower(), "Info")
-
-    def _normalize_confidence(self, confidence: str) -> str:
-        """Normalize confidence to a supported label."""
-        if not confidence:
-            return "Tentative"
-        conf_map = {k.lower(): k for k in CONFIDENCE_LEVELS.keys()}
-        return conf_map.get(str(confidence).lower(), "Tentative")
 
     def analyze(
         self, url: str, response: requests.Response, soup: BeautifulSoup
@@ -256,10 +242,10 @@ class BaseAnalyzer:
     ):
         """
         Add a vulnerability to the findings with detailed metadata.
-        
+
         This is the standard method for reporting vulnerabilities. For enhanced
         reporting with background, impact, and references, use add_enriched_vulnerability.
-        
+
         Args:
             vuln_type: Type/name of the vulnerability
             severity: Severity level (Critical, High, Medium, Low, Info)
@@ -273,8 +259,8 @@ class BaseAnalyzer:
             parameter: Affected parameter name (for verification)
             url: Target URL (for verification)
         """
-        severity = self._normalize_severity(severity)
-        confidence = self._normalize_confidence(confidence)
+        severity = normalize_severity(severity)
+        confidence = normalize_confidence(confidence)
         vulnerability = {
             "type": vuln_type,
             "severity": severity,
@@ -352,8 +338,8 @@ class BaseAnalyzer:
         else:
             evidence_list = [evidence] if evidence else []
             evidence_str = evidence
-        
-        confidence = self._normalize_confidence(confidence)
+
+        confidence = normalize_confidence(confidence)
         # Call standard add_vulnerability to ensure consistent base behavior
         self.add_vulnerability(
             vuln_type,
