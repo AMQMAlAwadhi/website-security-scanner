@@ -45,28 +45,6 @@ This tool performs automated security assessments of low-code applications built
 - **Executive Summaries**: High-level security assessment overviews
 - **Verification Results**: Includes active testing outcomes with evidence
 
-### 🎯 Platform-Specific Checks
-
-#### Bubble.io Applications
-- Workflow API exposure detection
-- Privacy rules bypass analysis
-- Database schema leak identification
-- Authentication token exposure
-- Client-side data exposure assessment
-
-#### OutSystems Applications
-- REST API security analysis
-- Screen action privilege escalation
-- Entity exposure detection
-- Session management evaluation
-- Role-based access control assessment
-
-#### Airtable Applications
-- Base ID and API key exposure
-- Table structure analysis
-- Permission model evaluation
-- Data access control assessment
-
 ## Installation
 
 ### Prerequisites
