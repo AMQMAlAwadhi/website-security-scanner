@@ -24,17 +24,15 @@ import requests
 from bs4 import BeautifulSoup
 
 # Import scanner components
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from website_security_scanner.main import LowCodeSecurityScanner
 from website_security_scanner.enhanced_report_generator import EnhancedReportGenerator
 from website_security_scanner.result_transformer import transform_results_for_professional_report
 
-# Global configuration - use absolute paths from project root
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-UPLOAD_FOLDER = PROJECT_ROOT / 'data' / 'uploads'
-REPORTS_FOLDER = PROJECT_ROOT / 'data' / 'reports'
-SCANS_FOLDER = PROJECT_ROOT / 'data' / 'scans'
+# Global configuration - store runtime data under working directory by default
+DATA_ROOT = Path(os.environ.get("WSS_DATA_DIR", str(Path.cwd() / "data"))).resolve()
+UPLOAD_FOLDER = DATA_ROOT / "uploads"
+REPORTS_FOLDER = DATA_ROOT / "reports"
+SCANS_FOLDER = DATA_ROOT / "scans"
 
 # Create directories
 for folder in [UPLOAD_FOLDER, REPORTS_FOLDER, SCANS_FOLDER]:

@@ -82,12 +82,12 @@ data/                      # Created at runtime
 
 2. **Start the Web Server**
    ```bash
-   python src/website_security_scanner/web/run_server.py
+   wss-web
    ```
 
    Or with custom options:
    ```bash
-   python src/website_security_scanner/web/run_server.py --host 0.0.0.0 --port 8080 --debug
+   wss-web --host 0.0.0.0 --port 8080 --debug
    ```
 
 3. **Access the Interface**
@@ -384,7 +384,7 @@ Customize report appearance in `report_generator.py`.
 
 Enable debug mode for detailed error messages:
 ```bash
-python run_server.py --debug
+wss-web --debug
 ```
 
 ### Logs
@@ -437,3 +437,4 @@ For issues or questions:
 ---
 
 **Note:** This web frontend is designed for security professionals. Always obtain proper authorization before scanning systems you don't own.
+

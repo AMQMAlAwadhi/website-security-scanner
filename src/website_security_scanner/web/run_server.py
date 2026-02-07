@@ -5,15 +5,10 @@ Web Server Startup Script
 Run this script to start the professional web frontend for the security scanner.
 
 Usage:
-    python run_server.py [--host HOST] [--port PORT] [--debug]
+    wss-web [--host HOST] [--port PORT] [--debug]
 """
 
 import argparse
-import sys
-from pathlib import Path
-
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from website_security_scanner.web.app import create_app, socketio
 

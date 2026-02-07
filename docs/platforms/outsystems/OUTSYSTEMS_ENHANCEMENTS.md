@@ -246,3 +246,4 @@ Potential areas for further development:
 - [Burp Suite Documentation](https://portswigger.net/burp/documentation)
 - [Content Security Policy Reference](https://content-security-policy.com/)
 - [OWASP Session Management](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)
+

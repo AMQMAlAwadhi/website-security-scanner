@@ -6,18 +6,16 @@ Bachelor Thesis: Low-Code Platforms for E-commerce: Comparative Security Analysi
 This CLI provides an easy-to-use interface for running security scans on low-code platforms.
 
 Usage:
-    python cli.py --url https://example.bubbleapps.io/app
-    python cli.py --config config.yaml
-    python cli.py --batch urls.txt
-    python cli.py --comparative --output comparative_report.json
+    wss --url https://example.bubbleapps.io/app
+    wss --config config/config.yaml
+    wss --batch urls.txt
+    wss --comparative --output comparative_report.json
 
 Author: Bachelor Thesis Project
 """
 
 import argparse
 import json
-import os
-import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -28,17 +26,12 @@ import requests
 import yaml
 from colorama import Back, Fore, Style, init
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from result_transformer import transform_results_for_professional_report
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 # Initialize colorama for cross-platform colored output
 init()
 
 from website_security_scanner.main import LowCodeSecurityScanner
 from website_security_scanner.report_generator import ProfessionalReportGenerator
+from website_security_scanner.result_transformer import transform_results_for_professional_report
 
 
 class SecurityScannerCLI:
@@ -512,25 +505,25 @@ def main():
         epilog="""
 Examples:
   # Scan a single URL
-  python cli.py --url https://example.bubbleapps.io/app
+  wss --url https://example.bubbleapps.io/app
 
   # Scan multiple URLs from file
-  python cli.py --batch urls.txt
+  wss --batch urls.txt
 
   # Use configuration file
-  python cli.py --config config.yaml
+  wss --config config/config.yaml
 
   # Generate enhanced professional report
-  python cli.py --url https://example.com --enhanced
+  wss --url https://example.com --enhanced
 
   # Generate comparative analysis
-  python cli.py --batch urls.txt --comparative --output reports/comparative.json
+  wss --batch urls.txt --comparative --output reports/comparative.json
 
   # Specify output format
-  python cli.py --url https://example.com --format txt --output report.txt
+  wss --url https://example.com --format txt --output report.txt
 
   # Verbose output with detailed vulnerability information
-  python cli.py --url https://example.com --verbose
+  wss --url https://example.com --verbose
         """,
     )
 

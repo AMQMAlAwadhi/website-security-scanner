@@ -27,7 +27,7 @@ cd website_security_scanner
 pip install -r requirements.txt
 
 # Verify installation
-python -m website_security_scanner.cli.cli --help
+wss --help
 ```
 
 ## Quick Examples
@@ -86,7 +86,7 @@ for vuln in results['vulnerabilities']:
 
 #### Start the Web Server
 ```bash
-python src/website_security_scanner/web/run_server.py
+wss-web
 ```
 
 Access at: **http://localhost:5000**
@@ -113,12 +113,12 @@ Access at: **http://localhost:5000**
 
 #### Single URL Scan
 ```bash
-python -m website_security_scanner.cli.cli --url https://your-app.bubbleapps.io
+wss --url https://your-app.bubbleapps.io
 ```
 
 #### Enhanced Scan with Verification
 ```bash
-python -m website_security_scanner.cli.cli \
+wss \
   --url https://your-app.bubbleapps.io \
   --enhanced \
   --verify-vulnerabilities
@@ -132,7 +132,7 @@ echo "https://app2.outsystems.app" >> urls.txt
 echo "https://airtable.com/app3" >> urls.txt
 
 # Batch scan
-python -m website_security_scanner.cli.cli --batch urls.txt --enhanced
+wss --batch urls.txt --enhanced
 ```
 
 #### Configuration File Usage
@@ -152,7 +152,7 @@ reports:
 EOF
 
 # Scan with config
-python -m website_security_scanner.cli.cli --config config.yaml
+wss --config config.yaml
 ```
 
 ## Understanding Results
@@ -193,7 +193,7 @@ python -m website_security_scanner.cli.cli --config config.yaml
 ### Bubble.io Applications
 ```bash
 # Scan Bubble app
-python -m website_security_scanner.cli.cli \
+wss \
   --url https://amqmalawadhi-85850.bubbleapps.io/version-test/ \
   --enhanced
 ```
@@ -201,7 +201,7 @@ python -m website_security_scanner.cli.cli \
 ### OutSystems Applications
 ```bash
 # Scan OutSystems app
-python -m website_security_scanner.cli.cli \
+wss \
   --url https://personal-7hwwkk2j-dev.outsystems.app/UST/ \
   --verify-vulnerabilities
 ```
@@ -209,7 +209,7 @@ python -m website_security_scanner.cli.cli \
 ### Airtable Applications
 ```bash
 # Scan Airtable base
-python -m website_security_scanner.cli.cli \
+wss \
   --url https://airtable.com/app5oLkwSi8gaXUod/ \
   --enhanced
 ```
@@ -221,7 +221,7 @@ python -m website_security_scanner.cli.cli \
 # .github/workflows/security-scan.yml
 - name: Security Scan
   run: |
-    python -m website_security_scanner.cli.cli \
+    wss \
       --url "${{ env.APP_URL }}" \
       --format json \
       --output security-report.json
@@ -230,13 +230,13 @@ python -m website_security_scanner.cli.cli \
 ### Custom Reporting
 ```bash
 # Generate HTML report
-python -m website_security_scanner.cli.cli \
+wss \
   --url https://target.com \
   --format html \
   --output report.html
 
 # Generate JSON for processing
-python -m website_security_scanner.cli.cli \
+wss \
   --url https://target.com \
   --format json \
   --output report.json
@@ -252,19 +252,19 @@ python -m website_security_scanner.cli.cli \
 netstat -an | grep :5000
 
 # Use different port
-python src/website_security_scanner/web/run_server.py --port 8080
+wss-web --port 8080
 ```
 
 **Scan Times Out**
 ```bash
 # Increase timeout
-python -m website_security_scanner.cli.cli --url https://target.com --timeout 30
+wss --url https://target.com --timeout 30
 ```
 
 **SSL Certificate Errors**
 ```bash
 # Skip SSL verification (development only)
-python -m website_security_scanner.cli.cli --url https://target.com --no-ssl-verify
+wss --url https://target.com --no-ssl-verify
 ```
 
 **Too Many False Positives**
@@ -275,10 +275,10 @@ python -m website_security_scanner.cli.cli --url https://target.com --no-ssl-ver
 ### Debug Mode
 ```bash
 # Web server debug
-python src/website_security_scanner/web/run_server.py --debug
+wss-web --debug
 
 # CLI verbose output
-python -m website_security_scanner.cli.cli --url https://target.com --verbose
+wss --url https://target.com --verbose
 ```
 
 ## Next Steps
@@ -312,21 +312,21 @@ All commands are run via the CLI script defined in `src/website_security_scanner
 
 ```bash
 # Scan a single URL
-python src/website_security_scanner/cli/cli.py --url https://your-app.outsystems.app
+wss --url https://your-app.outsystems.app
 
 # Scan a single URL and generate an enhanced professional HTML report
-python src/website_security_scanner/cli/cli.py \
+wss \
   --url https://your-app.outsystems.app \
   --enhanced
 
 # Batch scan from file (one URL per line)
-python src/website_security_scanner/cli/cli.py \
+wss \
   --batch urls.txt \
   --format json \
   --output reports/batch_scan.json
 
 # Scan using a YAML configuration file
-python src/website_security_scanner/cli/cli.py \
+wss \
   --config config/config.yaml \
   --format json \
   --output reports/config_scan.json
@@ -400,7 +400,7 @@ Simple text output for quick review
 # .github/workflows/security-scan.yml
 - name: Security Scan
   run: |
-    python src/website_security_scanner/cli/cli.py \
+    wss \
       --url "${{ env.APP_URL }}" \
       --format json \
       --output security-report.json
@@ -525,3 +525,4 @@ For issues or questions:
 ---
 
 **Happy Scanning! 🔒**
+

@@ -84,11 +84,12 @@ cd website_security_scanner
 2. **Install dependencies**:
 ```bash
 pip install -r requirements.txt
+pip install -e .
 ```
 
 3. **Verify installation**:
 ```bash
-python main.py --help
+wss --help
 ```
 
 ## Quick Start
@@ -97,7 +98,7 @@ python main.py --help
 
 1. **Start the web server**:
 ```bash
-python src/website_security_scanner/web/run_server.py
+wss-web
 ```
 
 2. **Open in browser**:
@@ -113,12 +114,12 @@ See [docs/user_guide/WEB_FRONTEND_GUIDE.md](docs/user_guide/WEB_FRONTEND_GUIDE.m
 
 1. **Scan a single URL**:
 ```bash
-python -m website_security_scanner.cli.cli --url https://your-app.bubbleapps.io/app-name
+wss --url https://your-app.bubbleapps.io/app-name
 ```
 
 2. **Scan with vulnerability verification**:
 ```bash
-python -m website_security_scanner.cli.cli \
+wss \
   --url https://your-app.bubbleapps.io \
   --enhanced \
   --verify-vulnerabilities
@@ -126,12 +127,12 @@ python -m website_security_scanner.cli.cli \
 
 3. **Scan multiple URLs from a file**:
 ```bash
-python -m website_security_scanner.cli.cli --batch urls.txt --output results.json
+wss --batch urls.txt --output results.json
 ```
 
 4. **Generate comparative analysis**:
 ```bash
-python -m website_security_scanner.cli.cli --batch urls.txt --comparative --output comparative_report.json
+wss --batch urls.txt --comparative --output comparative_report.json
 ```
 
 ### Example URLs File (urls.txt)
@@ -145,7 +146,9 @@ https://airtable.com/app5oLkwSi8gaXUod/
 
 ### Using Configuration Files
 
-Create a `config.yaml` file to customize scanner behavior:
+Configuration defaults live in `src/website_security_scanner/config/settings.py`. Use YAML configs (like `config/config.yaml`) as user-editable overrides for batch targets and report settings.
+
+Create a `config.yaml` file to customize scanner behavior (see `config/config.yaml` for a full example):
 
 ```yaml
 # Scanner Settings
@@ -172,7 +175,7 @@ reports:
 
 Run with configuration:
 ```bash
-python cli.py --config config.yaml
+wss --config config/config.yaml
 ```
 
 ## Command Line Options
@@ -180,43 +183,43 @@ python cli.py --config config.yaml
 ### Input Options
 ```bash
 # Scan single URL
-python cli.py --url <URL>
+wss --url <URL>
 
 # Batch scan from file
-python cli.py --batch <file_path>
+wss --batch <file_path>
 
 # Use configuration file
-python cli.py --config <config_file>
+wss --config <config_file>
 ```
 
 ### Output Options
 ```bash
 # Specify output file and format
-python cli.py --url <URL> --output report.json --format json
+wss --url <URL> --output report.json --format json
 
 # Available formats: json, yaml, txt, html
-python cli.py --url <URL> --format html --output report.html
+wss --url <URL> --format html --output report.html
 ```
 
 ### Analysis Options
 ```bash
 # Generate comparative analysis
-python cli.py --batch urls.txt --comparative
+wss --batch urls.txt --comparative
 
 # Verbose output
-python cli.py --url <URL> --verbose
+wss --url <URL> --verbose
 
 # Disable colored output
-python cli.py --url <URL> --no-color
+wss --url <URL> --no-color
 ```
 
 ### Scanner Options
 ```bash
 # Custom timeout and delay
-python cli.py --url <URL> --timeout 15 --delay 3
+wss --url <URL> --timeout 15 --delay 3
 
 # Custom User-Agent
-python cli.py --url <URL> --user-agent "Custom Scanner 1.0"
+wss --url <URL> --user-agent "Custom Scanner 1.0"
 ```
 
 ## Understanding the Results
@@ -289,22 +292,22 @@ This scanner is designed to support:
 ### Individual Reports
 ```bash
 # Generate detailed JSON report
-python cli.py --url <URL> --output detailed_report.json
+wss --url <URL> --output detailed_report.json
 
 # Generate human-readable text report
-python cli.py --url <URL> --format txt --output readable_report.txt
+wss --url <URL> --format txt --output readable_report.txt
 
 # Generate HTML report with visualizations
-python cli.py --url <URL> --format html --output visual_report.html
+wss --url <URL> --format html --output visual_report.html
 ```
 
 ### Comparative Analysis Reports
 ```bash
 # Compare multiple platforms
-python cli.py --batch urls.txt --comparative --output comparison.json
+wss --batch urls.txt --comparative --output comparison.json
 
 # Generate executive summary
-python cli.py --batch urls.txt --comparative --format txt --output executive_summary.txt
+wss --batch urls.txt --comparative --format txt --output executive_summary.txt
 ```
 
 ## Customization and Extension
@@ -370,17 +373,17 @@ For a complete overview of all enhancements, see [docs/CHANGELOG.md](docs/CHANGE
 
 1. **SSL Certificate Errors**:
 ```bash
-python -m website_security_scanner.cli.cli --url <URL> --no-ssl-verify
+wss --url <URL> --no-ssl-verify
 ```
 
 2. **Timeout Issues**:
 ```bash
-python -m website_security_scanner.cli.cli --url <URL> --timeout 30
+wss --url <URL> --timeout 30
 ```
 
 3. **Rate Limiting**:
 ```bash
-python -m website_security_scanner.cli.cli --batch urls.txt --delay 5
+wss --batch urls.txt --delay 5
 ```
 
 4. **Permission Errors**:
@@ -395,12 +398,12 @@ python -m website_security_scanner.cli.cli --batch urls.txt --delay 5
 
 ### Debug Mode
 ```bash
-python -m website_security_scanner.cli.cli --url <URL> --verbose
+wss --url <URL> --verbose
 ```
 
 ### Web Server Debug
 ```bash
-python src/website_security_scanner/web/run_server.py --debug
+wss-web --debug
 ```
 
 ## Contributing
@@ -454,3 +457,4 @@ For academic collaboration or questions about this research:
 ---
 
 **Disclaimer**: This tool is for educational and research purposes. Always obtain proper authorization before scanning applications. The authors are not responsible for misuse of this tool.
+
