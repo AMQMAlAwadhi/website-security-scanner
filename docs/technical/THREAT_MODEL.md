@@ -35,6 +35,7 @@
 
 ## Out of Scope
 - Exploit development or intrusive testing.
-- Privileged or authenticated scans.
+- Privileged or authenticated scans (unless explicitly configured by the user).
+- Dynamic runtime instrumentation or full behavioral analysis.
 - Denial-of-service testing.
 

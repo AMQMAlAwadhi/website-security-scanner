@@ -332,7 +332,9 @@ wss --batch urls.txt --comparative --format txt --output executive_summary.txt
 - Use responsibly for educational and research purposes
 
 ### Technical Limitations
-- Client-side analysis only (no server-side code access)
+- Client-side analysis only (server-side logic is inferred only if it is exposed to the client)
+- Static analysis dominates; dynamic runtime behavior analysis is limited
+- Scans are unauthenticated by default; authenticated-only functionality may not be covered
 - Network-accessible applications only
 - Limited by platform-specific obfuscation techniques
 - May produce false positives requiring manual verification
