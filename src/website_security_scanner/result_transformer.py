@@ -3,8 +3,39 @@ Transforms raw scan results into a structured format for professional reporting.
 """
 
 from datetime import datetime
+from typing import Any, List
 from urllib.parse import urlparse
+
 from .utils.confidence_scoring import compute_confidence_score
+
+
+def _normalize_evidence(evidence: Any) -> List[Any]:
+    if evidence is None:
+        return []
+    if isinstance(evidence, list):
+        return evidence
+    return [evidence]
+
+
+def _normalize_severity(severity: Any) -> str:
+    if not severity:
+        return "Info"
+    sev = str(severity).lower()
+    if sev in {"critical", "high", "medium", "low"}:
+        return sev.title()
+    if sev in {"info", "information"}:
+        return "Info"
+    return "Info"
+
+
+def _safe_duration(start_timestamp: Any) -> str:
+    if not start_timestamp:
+        return "N/A"
+    try:
+        start_dt = datetime.fromisoformat(str(start_timestamp))
+        return str(datetime.now() - start_dt)
+    except Exception:
+        return "N/A"
 
 
 def calculate_risk_level(vulnerabilities):
@@ -71,6 +102,7 @@ def transform_results_for_professional_report(raw_results):
     parsed = urlparse(base_url) if base_url else None
 
     for vuln in raw_results.get('vulnerabilities', []):
+        evidence_list = _normalize_evidence(vuln.get("evidence"))
         # Prefer analyzer-provided instances; otherwise build a single instance
         instances = vuln.get("instances")
         if not instances:
@@ -78,15 +110,15 @@ def transform_results_for_professional_report(raw_results):
                 "url": base_url,
                 "request": vuln.get("request"),
                 "response": vuln.get("response"),
-                "evidence": vuln.get("evidence", []),
+                "evidence": evidence_list,
             }]
 
         vulnerabilities.append({
             "title": vuln.get("type", "Unnamed Vulnerability"),
-            "severity": vuln.get("severity", "info"),
+            "severity": _normalize_severity(vuln.get("severity", "info")),
             "confidence": vuln.get("confidence", "tentative"),
             "description": vuln.get("description", "No details available."),
-            "evidence": vuln.get("evidence", []),
+            "evidence": evidence_list,
             # New enriched fields for background, impact and external references
             "background": vuln.get("background"),
             "impact": vuln.get("impact"),
@@ -115,12 +147,20 @@ def transform_results_for_professional_report(raw_results):
                 headers_present[header] = {"value": value}
 
     # Assemble the structured data
+    platform = raw_results.get("platform_type", "unknown")
+    specific_findings = (
+        raw_results.get(f"{platform}_specific")
+        or raw_results.get(f"{platform}_specific_findings")
+    )
+    if platform == "generic":
+        specific_findings = specific_findings or raw_results.get("generic_analysis") or raw_results.get("generic_findings")
+
     structured_data = {
         "scan_metadata": {
             "url": raw_results.get("url"),
             "timestamp": raw_results.get("timestamp"),
             "end_timestamp": datetime.now().isoformat(),  # Assuming scan ends now
-            "duration": str(datetime.now() - datetime.fromisoformat(raw_results.get("timestamp"))),
+            "duration": _safe_duration(raw_results.get("timestamp")),
             "scanner_version": "1.0-professional",
             "status_code": raw_results.get("status_code"),
             "response_time": raw_results.get("response_time"),
@@ -133,9 +173,9 @@ def transform_results_for_professional_report(raw_results):
             "git_commit": raw_results.get("git_commit", "N/A"),
         },
         "platform_analysis": {
-            "platform_type": raw_results.get("platform_type", "unknown"),
+            "platform_type": platform,
             "technology_stack": [],  # This might need more logic to populate
-            "specific_findings": raw_results.get(f'{raw_results.get("platform_type")}_specific', {}),
+            "specific_findings": specific_findings or {},
             "platform_detection": raw_results.get("platform_detection", {}),
         },
         "executive_summary": {
@@ -159,5 +199,3 @@ def transform_results_for_professional_report(raw_results):
     }
     
     return structured_data
-
-from urllib.parse import urlparse

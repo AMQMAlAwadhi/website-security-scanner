@@ -225,6 +225,9 @@ class LowCodeSecurityScanner:
             target_results["vulnerabilities"] = self._normalize_vulnerabilities(
                 target_results.get("vulnerabilities", []), url
             )
+            target_results["vulnerabilities"] = self._dedupe_vulnerabilities(
+                target_results.get("vulnerabilities", [])
+            )
 
             if self.scan_profile.get("active_verification", True):
                 target_results["verification_summary"] = self._apply_active_verification(
@@ -240,11 +243,28 @@ class LowCodeSecurityScanner:
                 }
 
             if self.scan_profile.get("evidence_verification", True):
-                verified_vulns, evidence_summary = verify_vulnerabilities(
-                    target_results["vulnerabilities"], self.session, url, response
-                )
-                target_results["vulnerabilities"] = verified_vulns
-                target_results["evidence_verification_summary"] = evidence_summary
+                try:
+                    verified_vulns, evidence_summary = verify_vulnerabilities(
+                        target_results["vulnerabilities"], self.session, url, response
+                    )
+                    target_results["vulnerabilities"] = verified_vulns
+                    target_results["evidence_verification_summary"] = evidence_summary
+                except Exception as exc:
+                    target_results["scan_warnings"].append({
+                        "message": "Evidence verification failed",
+                        "error": str(exc),
+                    })
+                    target_results["evidence_verification_summary"] = {
+                        "total_vulnerabilities": len(target_results["vulnerabilities"]),
+                        "verified": 0,
+                        "stale": 0,
+                        "unverified": len(target_results["vulnerabilities"]),
+                        "failed": len(target_results["vulnerabilities"]),
+                        "live_checked": 0,
+                        "verification_rate": 0.0,
+                        "disabled": True,
+                        "error": str(exc),
+                    }
             else:
                 target_results["evidence_verification_summary"] = {
                     "total_vulnerabilities": len(target_results["vulnerabilities"]),
@@ -531,6 +551,39 @@ class LowCodeSecurityScanner:
             normalized.append(v)
         return normalized
 
+    def _dedupe_vulnerabilities(self, vulnerabilities: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        deduped: List[Dict[str, Any]] = []
+        seen = set()
+        for vuln in vulnerabilities:
+            key = self._make_vuln_key(vuln)
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(vuln)
+        return deduped
+
+    def _make_vuln_key(self, vuln: Dict[str, Any]) -> str:
+        def _safe_json(value: Any) -> str:
+            try:
+                return json.dumps(value, sort_keys=True, default=str)
+            except Exception:
+                return str(value)
+
+        evidence = vuln.get("evidence", "")
+        if isinstance(evidence, list):
+            evidence_key = [_safe_json(item) for item in evidence]
+        else:
+            evidence_key = _safe_json(evidence)
+
+        return "|".join([
+            str(vuln.get("type", "")),
+            str(vuln.get("severity", "")),
+            str(vuln.get("url", "")),
+            str(vuln.get("parameter", "")),
+            str(vuln.get("description", "")),
+            _safe_json(evidence_key),
+        ])
+
     def _summarize_verification(self, vulnerabilities: List[Dict[str, Any]]) -> Dict[str, Any]:
         total = len(vulnerabilities)
         verified = 0
@@ -679,7 +732,7 @@ class LowCodeSecurityScanner:
             "airtable_specific": {
                 "base_id_exposure": results.get("base_ids", []),
                 "api_key_exposure": results.get("api_keys", []),
-                "table_structure_exposure": results.get("table_ids", []),
+                "table_structure_exposure": results.get("table_schemas", results.get("table_ids", [])),
             },
             "vulnerabilities": results.get("vulnerabilities", []),
             "scan_warnings": getattr(analyzer, "scan_warnings", []),
@@ -695,6 +748,7 @@ class LowCodeSecurityScanner:
 
         return {
             "generic_analysis": results.get("generic_findings", {}),
+            "generic_specific": results.get("generic_findings", {}),
             "vulnerabilities": results.get("vulnerabilities", []),
             "scan_warnings": getattr(analyzer, "scan_warnings", []),
         }
@@ -708,7 +762,7 @@ class LowCodeSecurityScanner:
         results = analyzer.analyze(url, response, soup)
 
         return {
-            "shopify_specific": results.get("shopify_findings", {}),
+            "shopify_specific": results.get("shopify_specific_findings", results.get("shopify_findings", {})),
             "vulnerabilities": results.get("vulnerabilities", []),
             "scan_warnings": getattr(analyzer, "scan_warnings", []),
         }
@@ -722,7 +776,7 @@ class LowCodeSecurityScanner:
         results = analyzer.analyze(url, response, soup)
 
         return {
-            "webflow_specific": results.get("webflow_findings", {}),
+            "webflow_specific": results.get("webflow_specific_findings", results.get("webflow_findings", {})),
             "vulnerabilities": results.get("vulnerabilities", []),
             "scan_warnings": getattr(analyzer, "scan_warnings", []),
         }
@@ -736,7 +790,7 @@ class LowCodeSecurityScanner:
         results = analyzer.analyze(url, response, soup)
 
         return {
-            "wix_specific": results.get("wix_findings", {}),
+            "wix_specific": results.get("wix_specific_findings", results.get("wix_findings", {})),
             "vulnerabilities": results.get("vulnerabilities", []),
             "scan_warnings": getattr(analyzer, "scan_warnings", []),
         }
@@ -750,7 +804,7 @@ class LowCodeSecurityScanner:
         results = analyzer.analyze(url, response, soup)
 
         return {
-            "mendix_specific": results.get("mendix_findings", {}),
+            "mendix_specific": results.get("mendix_specific_findings", results.get("mendix_findings", {})),
             "vulnerabilities": results.get("vulnerabilities", []),
             "scan_warnings": getattr(analyzer, "scan_warnings", []),
         }

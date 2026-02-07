@@ -50,6 +50,14 @@ class AdvancedChecksMixin:
         if not hostname:
             return
 
+        timeout = 6.0
+        if hasattr(self, "_get_timeout_seconds"):
+            try:
+                timeout = float(self._get_timeout_seconds(6))
+            except Exception:
+                timeout = 6.0
+        verify_ssl = bool(getattr(self, "verify_ssl", True))
+
         http2_supported = False
         http2_negotiated = False
         http2_advertised = False
@@ -57,9 +65,12 @@ class AdvancedChecksMixin:
         try:
             # First check: Test TLS ALPN for h2 support
             context = ssl.create_default_context()
+            if not verify_ssl:
+                context.check_hostname = False
+                context.verify_mode = ssl.CERT_NONE
             context.set_alpn_protocols(['h2', 'http/1.1'])
             
-            with socket.create_connection((hostname, 443), timeout=5) as sock:
+            with socket.create_connection((hostname, 443), timeout=timeout) as sock:
                 with context.wrap_socket(sock, server_hostname=hostname) as ssock:
                     negotiated_protocol = ssock.selected_alpn_protocol()
                     if negotiated_protocol == 'h2':
@@ -72,9 +83,9 @@ class AdvancedChecksMixin:
             try:
                 with httpx.Client(
                     http2=True, 
-                    timeout=6.0, 
+                    timeout=timeout, 
                     follow_redirects=True,
-                    verify=True
+                    verify=verify_ssl
                 ) as client:
                     response = client.get(url)
                     if response.http_version == "HTTP/2":

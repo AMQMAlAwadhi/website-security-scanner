@@ -267,12 +267,66 @@ class SecurityScannerCLI:
             with open(config_path, "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
 
+            self._validate_config(config or {})
             self.print_status(f"Configuration loaded from {config_path}", "success")
             return config
 
         except Exception as e:
             self.print_status(f"Error loading configuration: {str(e)}", "error")
             return {}
+
+    def _validate_config(self, config: Dict[str, Any]) -> None:
+        """Basic validation for config files to catch common mistakes."""
+        if not isinstance(config, dict):
+            self.print_status("Configuration is not a valid mapping (YAML dict).", "warning")
+            return
+
+        allowed_top_level = {
+            "scanner",
+            "targets",
+            "security_headers",
+            "platforms",
+            "vulnerability_rules",
+            "reports",
+            "modules",
+            "thesis",
+            "logging",
+            "rate_limiting",
+            "error_handling",
+        }
+        unknown_keys = set(config.keys()) - allowed_top_level
+        if unknown_keys:
+            self.print_status(
+                f"Unknown top-level config keys: {', '.join(sorted(unknown_keys))}",
+                "warning",
+            )
+
+        def _require_non_negative_int(section: str, key: str):
+            value = config.get(section, {}).get(key)
+            if value is None:
+                return
+            try:
+                if int(value) < 0:
+                    self.print_status(f"{section}.{key} must be non-negative", "warning")
+            except (TypeError, ValueError):
+                self.print_status(f"{section}.{key} must be an integer", "warning")
+
+        def _require_positive_number(section: str, key: str):
+            value = config.get(section, {}).get(key)
+            if value is None:
+                return
+            try:
+                if float(value) <= 0:
+                    self.print_status(f"{section}.{key} must be positive", "warning")
+            except (TypeError, ValueError):
+                self.print_status(f"{section}.{key} must be a number", "warning")
+
+        _require_positive_number("scanner", "timeout")
+        _require_non_negative_int("scanner", "max_redirects")
+        _require_non_negative_int("scanner", "delay_between_requests")
+        _require_positive_number("scanner", "max_concurrent_scans")
+        _require_positive_number("rate_limiting", "requests_per_second")
+        _require_non_negative_int("rate_limiting", "burst_allowance")
 
     def run_comparative_analysis(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Run comparative analysis across multiple platforms"""
