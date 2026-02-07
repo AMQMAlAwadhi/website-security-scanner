@@ -11,7 +11,7 @@ Author: Bachelor Thesis Project - Low-Code Platforms Security Analysis
 import re
 import math
 import string
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 
 
 class SecretDetector:
