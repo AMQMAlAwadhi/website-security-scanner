@@ -942,6 +942,26 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
         out.append(f'<tr><td class="label">Grade</td><td>{ssl.get("grade", "Unknown")}</td></tr>')
         out.append(f'<tr><td class="label">Protocol</td><td>{ssl.get("protocol_version", "Unknown")}</td></tr>')
         out.append(f'<tr><td class="label">Cipher</td><td>{str(ssl.get("cipher_suite", "Unknown"))[:120]}</td></tr>')
+        out.append(f'<tr><td class="label">Valid Certificate</td><td>{"Yes" if ssl.get("certificate_valid") else "No"}</td></tr>')
+        out.append('</table>')
+        out.append('</div>')
+        
+        # Vulnerabilities section
+        for i, v in enumerate(vulnerabilities, 1):
+            title = v.get('title','Issue')
+            host = v.get('host', results.get('scan_metadata', {}).get('url',''))
+            path = v.get('path','/')
+            sev = v.get('severity','medium').lower()
+            conf = v.get('confidence','tentative').lower()
+            # Create safe anchor ID
+            anchor_id = f"vuln_{i}_{self._create_safe_id(title)}"
+            # Header
+            out.append(f"<span class=\"BODH0\" id=\"{anchor_id}\">{i}.&nbsp;{v.get('title','Issue')}</span>")
+            # Prev/Next navigation
+            prev_link = f"<a class=\"PREVNEXT\" href=\"#{i-1}\">Previous</a>" if i>1 else ''
+            next_link = f"<a class=\"PREVNEXT\" href=\"#{i+1}\">Next</a>" if i < len(vulnerabilities) else ''
+            out.append(f"&nbsp;{prev_link}&nbsp;{next_link}<br>")
+            
             # Summary block with icon cell placeholder
             out.append('<h2>Summary</h2>')
             attribution = v.get('attribution', {})
