@@ -499,6 +499,22 @@ def execute_scan(app, socketio, scan_id):
         
         # Save results after normalization
         results = normalize_scan_results(results)
+        
+        # Persist scan profile metadata to results for reporting
+        results['scan_profile'] = {
+            'verify_vulnerabilities': verify,
+            'deep_scan': deep_scan,
+            'api_discovery': api_discovery,
+            'scan_profile': scan_profile,
+            'timeout_seconds': scan_profile.get('timeout_seconds', 30),
+            'scan_depth': scan_profile.get('scan_depth', 1),
+            'fetch_external_js_assets': scan_profile.get('fetch_external_js_assets', True),
+            'max_external_js_assets': scan_profile.get('max_external_js_assets', 8),
+            'min_interval_seconds': scan_profile.get('min_interval_seconds', 0.2),
+            'max_requests_per_minute': scan_profile.get('max_requests_per_minute', 60),
+            'verify_ssl': scan_profile.get('verify_ssl', True)
+        }
+        
         result_file = Path(app.config['SCANS_FOLDER']) / f"{scan_id}.json"
         with open(result_file, 'w') as f:
             json.dump(results, f, indent=2)
@@ -525,6 +541,17 @@ def execute_scan(app, socketio, scan_id):
         scan_job['risk_level'] = results.get('risk_level', 'None')
         scan_job.update(severity_counts)
         scan_job['platform'] = results.get('platform_type', 'unknown')
+        
+        # Include scan profile metadata in job for UI display
+        scan_job['scan_profile_applied'] = {
+            'verify_vulnerabilities': verify,
+            'deep_scan': deep_scan,
+            'api_discovery': api_discovery,
+            'timeout_seconds': scan_profile.get('timeout_seconds', 30),
+            'scan_depth': scan_profile.get('scan_depth', 1),
+            'max_requests_per_minute': scan_profile.get('max_requests_per_minute', 60),
+            'verify_ssl': scan_profile.get('verify_ssl', True)
+        }
         
         # Move to history
         app.active_scans.pop(scan_id)
