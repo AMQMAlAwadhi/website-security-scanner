@@ -520,7 +520,7 @@ h3 { font-size: 1.1em; color: #404042; margin: 15px 0 10px 0; }
             return '<div class="enhanced-section"><p>No vulnerabilities requiring remediation found.</p></div>'
         rows = []
         for item in remediation[:10]:
-            cwe_links = ', '.join([f"<a href='https://cwe.mitre.org/data/definitions/{c}.html' target='_blank'>CWE-{c}</a>" for c in item['cwe'][:3]])
+            cwe_links = ', '.join([f"<a href='https://cwe.mitre.org/data/definitions/{c.replace('CWE-', '') if c.startswith('CWE-') else c}.html' target='_blank'>{c}</a>" for c in item['cwe'][:3]])
             rows.append(f"""
         <tr>
             <td><span class="priority-number">{item['priority']}</span></td>

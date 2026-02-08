@@ -1057,7 +1057,8 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
             capecs = v.get('capec', [])
             refs = []
             for c in cwes:
-                refs.append(f"<a href=\"https://cwe.mitre.org/data/definitions/{c}.html\">CWE-{c}</a>")
+                cwe_num = c.replace('CWE-', '') if c.startswith('CWE-') else c
+                refs.append(f"<a href=\"https://cwe.mitre.org/data/definitions/{cwe_num}.html\">{c}</a>")
             for c in capecs:
                 refs.append(f"<a href=\"https://capec.mitre.org/data/definitions/{c}.html\">CAPEC-{c}</a>")
             if refs:
@@ -1067,7 +1068,7 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
                 rid = f"{i}.{j}"
                 url = inst.get('url','')
                 # Make URL clickable in section header
-                out.append(f"<br><span class=\"BODH1\" id=\"{rid}\">{rid}.&nbsp;<a href=\"{url}\" target=\"_blank\" style=\"color: white; text-decoration: underline;\">{url}</a></span>")
+                out.append(f"<br><span class=\"BODH1\" id=\"{rid}\">{rid}.&nbsp;<a href=\"{url}\" target=\"_blank\" style=\"color: #3b82f6; text-decoration: underline;\">{url}</a></span>")
                 req = inst.get('request')
                 if req:
                     out.append('<h2>Request</h2>')
