@@ -325,7 +325,15 @@ class LowCodeSecurityScanner:
         
         # Perform basic scan first
         basic_results = self.scan_target(url)
-        
+
+        # Ensure security headers are preserved for enhanced reports
+        basic_security_headers = basic_results.get("security_headers")
+        if not isinstance(basic_security_headers, dict) or not basic_security_headers:
+            response_headers = basic_results.get("response_headers", {})
+            if response_headers:
+                basic_security_headers = self.analyze_security_headers(response_headers)
+                basic_results["security_headers"] = basic_security_headers
+
         # Convert to enhanced vulnerabilities
         enhanced_vulnerabilities = []
         for vuln in basic_results.get('vulnerabilities', []):
