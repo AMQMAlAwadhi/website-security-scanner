@@ -893,7 +893,7 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
             for j, inst in enumerate(v.get('instances', []), 1):
                 url = inst.get('url', '')
                 # Make URL clickable external link with internal navigation
-                lines.append(f'<p class="TOCH1"><a href="#{idx}.{j}" title="Navigate to details">{idx}.{j}.&nbsp;<a href="{url}" target="_blank" style="color: #3b82f6; text-decoration: underline;">{url}</a></a></p>')
+                lines.append(f'<p class="TOCH1">{idx}.{j}.&nbsp;<a href="#{idx}.{j}">[details]</a> <a href="{url}" target="_blank" style="color: #3b82f6; text-decoration: underline;">{url}</a></p>')
         return '\n'.join(lines)
     
     def _generate_burp_findings(self, results):
@@ -970,6 +970,11 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
             if v.get('impact'):
                 out.append('<h2>Impact</h2>')
                 out.append(f"<span class=\"TEXT\">{v['impact']}</span>")
+            
+            # Recommendation / Remediation
+            if v.get('recommendation'):
+                out.append('<h2>Remediation</h2>')
+                out.append(f"<span class=\"TEXT\">{v['recommendation']}</span>")
 
             # Verification Information
             verification = v.get('verification', {})
