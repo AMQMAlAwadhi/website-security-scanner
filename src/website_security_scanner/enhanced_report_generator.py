@@ -165,7 +165,6 @@ class EnhancedReportGenerator(ProfessionalReportGenerator):
         {self._generate_platform_confidence_panel(results)}
         {self._generate_comparative_tables(results)}
         {self._generate_report_integrity_block(results)}
-        {self._generate_burp_contents(results)}
         {self._generate_platform_specific_findings(results)}
         {self._generate_enhanced_findings(results)}
         {self._generate_enhanced_footer()}

@@ -884,16 +884,32 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
 </table><br>
 """
     
+    def _create_safe_id(self, text):
+        """Create safe HTML ID from text."""
+        import re
+        # Remove special characters, keep alphanumeric and underscores
+        safe = re.sub(r'[^a-zA-Z0-9_]', '', text)
+        # Replace spaces with underscores and limit length
+        safe = re.sub(r'\s+', '_', safe)[:50]
+        return safe.lower() if safe else 'id'
+
     def _generate_burp_contents(self, results):
         vulnerabilities = results.get('security_assessment', {}).get('vulnerabilities', [])
         lines = ['<div class="rule"></div>', '<h1>Contents</h1>']
+        
+        # Generate normalized anchors and links
         for idx, v in enumerate(vulnerabilities, 1):
             title = v.get('title','Issue')
-            lines.append(f'<p class="TOCH0"><a href="#{idx}">{idx}.&nbsp;{title}</a></p>')
+            # Create safe anchor ID from title
+            anchor_id = f"vuln_{idx}_{self._create_safe_id(title)}"
+            lines.append(f'<p class="TOCH0"><a href="#{anchor_id}">{idx}.&nbsp;{title}</a></p>')
+            
             for j, inst in enumerate(v.get('instances', []), 1):
                 url = inst.get('url', '')
+                # Create instance anchor
+                instance_anchor = f"{anchor_id}_{j}"
                 # Make URL clickable external link with internal navigation
-                lines.append(f'<p class="TOCH1">{idx}.{j}.&nbsp;<a href="#{idx}.{j}">[details]</a> <a href="{url}" target="_blank" style="color: #3b82f6; text-decoration: underline;">{url}</a></p>')
+                lines.append(f'<p class="TOCH1">{idx}.{j}.&nbsp;<a href="#{instance_anchor}">[details]</a> <a href="{url}" target="_blank" style="color: #3b82f6; text-decoration: underline;">{url}</a></p>')
         return '\n'.join(lines)
     
     def _generate_burp_findings(self, results):
@@ -926,22 +942,6 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
         out.append(f'<tr><td class="label">Grade</td><td>{ssl.get("grade", "Unknown")}</td></tr>')
         out.append(f'<tr><td class="label">Protocol</td><td>{ssl.get("protocol_version", "Unknown")}</td></tr>')
         out.append(f'<tr><td class="label">Cipher</td><td>{str(ssl.get("cipher_suite", "Unknown"))[:120]}</td></tr>')
-        out.append(f'<tr><td class="label">Valid Certificate</td><td>{"Yes" if ssl.get("certificate_valid") else "No"}</td></tr>')
-        out.append('</table></div>')
-        # Vulnerabilities
-        out.append('<div class="rule"></div>')
-        for i, v in enumerate(vulnerabilities, 1):
-            sev = v.get('severity','info').lower()
-            conf = v.get('confidence','tentative').lower()
-            host = v.get('host', results.get('scan_metadata', {}).get('url',''))
-            path = v.get('path','/')
-            # Header
-            out.append(f"<span class=\"BODH0\" id=\"{i}\">{i}.&nbsp;{v.get('title','Issue')}</span>")
-            # Prev/Next navigation
-            prev_link = f"<a class=\"PREVNEXT\" href=\"#{i-1}\">Previous</a>" if i>1 else ''
-            next_link = f"<a class=\"PREVNEXT\" href=\"#{i+1}\">Next</a>" if i < len(vulnerabilities) else ''
-            nav_html = (('<br>' + prev_link) if prev_link else '') + (('&nbsp;' + next_link) if next_link else '') + '<br>'
-            out.append(nav_html)
             # Summary block with icon cell placeholder
             out.append('<h2>Summary</h2>')
             attribution = v.get('attribution', {})
@@ -1055,7 +1055,8 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
                 instance_links = []
                 for j, inst in enumerate(instances):
                     url = inst.get('url', '')
-                    instance_links.append(f"<li><a href=\"#{i}.{j+1}\" title=\"Navigate to details\">{i}.{j+1}.</a> <a href=\"{url}\" target=\"_blank\" style=\"color: #3b82f6; text-decoration: underline;\">{url}</a></li>")
+                    instance_anchor = f"{anchor_id}_{j+1}"
+                    instance_links.append(f"<li><a href=\"#{instance_anchor}\" title=\"Navigate to details\">{i}.{j+1}.</a> <a href=\"{url}\" target=\"_blank\" style=\"color: #3b82f6; text-decoration: underline;\">{url}</a></li>")
                 out.append('<ul class="TEXT">' + ''.join(instance_links) + '</ul>')
             # Classifications
             cwes = v.get('cwe', [])
@@ -1072,8 +1073,10 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
             for j, inst in enumerate(v.get('instances', []), 1):
                 rid = f"{i}.{j}"
                 url = inst.get('url','')
+                # Create instance anchor
+                instance_anchor = f"{anchor_id}_{j}"
                 # Make URL clickable in section header
-                out.append(f"<br><span class=\"BODH1\" id=\"{rid}\">{rid}.&nbsp;<a href=\"{url}\" target=\"_blank\" style=\"color: #3b82f6; text-decoration: underline;\">{url}</a></span>")
+                out.append(f"<br><span class=\"BODH1\" id=\"{instance_anchor}\">{rid}.&nbsp;<a href=\"{url}\" target=\"_blank\" style=\"color: #3b82f6; text-decoration: underline;\">{url}</a></span>")
                 req = inst.get('request')
                 if req:
                     out.append('<h2>Request</h2>')
