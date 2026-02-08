@@ -56,10 +56,19 @@ def transform_results_for_professional_report(raw_results):
         # Prefer analyzer-provided instances; otherwise build a single instance
         instances = vuln.get("instances")
         if not instances:
+            # Build default instance with fallback to scan-level HTTP context
+            request_data = vuln.get("request")
+            response_data = vuln.get("response")
+            if not request_data and not response_data:
+                # Fallback to scan-level request/response
+                rr = raw_results.get("request_response", {})
+                request_data = rr.get("request")
+                response_data = rr.get("response")
+            
             instances = [{
                 "url": base_url,
-                "request": vuln.get("request"),
-                "response": vuln.get("response"),
+                "request": request_data,
+                "response": response_data,
                 "evidence": evidence_list,
             }]
 
@@ -128,6 +137,9 @@ def transform_results_for_professional_report(raw_results):
             "scan_profile_hash": raw_results.get("scan_profile_hash", "N/A"),
             "dataset_version": raw_results.get("dataset_version", "N/A"),
             "git_commit": raw_results.get("git_commit", "N/A"),
+            "request_headers": raw_results.get("request_headers", {}),
+            "response_headers": raw_results.get("response_headers", {}),
+            "request_response": raw_results.get("request_response", {}),
         },
         "platform_analysis": {
             "platform_type": platform,
