@@ -524,7 +524,7 @@ h3 { font-size: 1.1em; color: #404042; margin: 15px 0 10px 0; }
             # Use references from vulnerability data, fallback to CWE links if no references
             references = item.get('references', [])
             if references:
-                ref_links = ', '.join([f"<a href='{ref}' target='_blank'>{ref.split('/')[-1] if '/' in ref else ref}</a>" for ref in references[:2]])
+                ref_links = ', '.join([f"<a href='{ref}' target='_blank'>{ref}</a>" for ref in references[:2]])
             else:
                 # Fallback to CWE links if no references
                 cwe_list = item.get('cwe', [])
