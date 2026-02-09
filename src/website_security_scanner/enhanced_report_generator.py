@@ -100,8 +100,9 @@ class EnhancedReportGenerator(ProfessionalReportGenerator):
                 'title': vuln.get('title', 'Unknown Issue'),
                 'severity': vuln.get('severity', 'info'),
                 'confidence': vuln.get('confidence', 'tentative'),
-                'url': vuln.get('instances', [{}])[0].get('url', 'N/A'),
+                'url': vuln.get('instances', [{}])[0].get('url') or vuln.get('url', 'N/A'),
                 'cwe': vuln.get('cwe', []),
+                'references': vuln.get('references', []),
                 'estimated_effort': self._estimate_remediation_effort(vuln),
                 'business_impact': self._assess_business_impact(vuln)
             })
@@ -109,141 +110,33 @@ class EnhancedReportGenerator(ProfessionalReportGenerator):
         return remediation_list
 
     def _estimate_remediation_effort(self, vuln: Dict) -> str:
-        """Estimate remediation effort based on vulnerability type and actual data."""
+        """Estimate remediation effort based on vulnerability type."""
         category = vuln.get('category', 'General').lower()
-        severity = vuln.get('severity', 'info').lower()
-        instances = vuln.get('instances', [])
         
-        # Base effort by category
-        category_effort = {
-            'security headers': {'base': 'Low', 'hours': 2},
-            'configuration': {'base': 'Low', 'hours': 4},
-            'ssl/tls': {'base': 'Low', 'hours': 3},
-            'xss': {'base': 'Medium', 'hours': 6},
-            'csrf': {'base': 'Medium', 'hours': 4},
-            'input validation': {'base': 'Medium', 'hours': 8},
-            'sql injection': {'base': 'High', 'hours': 24},
-            'command injection': {'base': 'High', 'hours': 48},
-            'authorization': {'base': 'High', 'hours': 16},
-            'authentication': {'base': 'High', 'hours': 32},
-            'session management': {'base': 'High', 'hours': 40}
-        }
-        
-        # Get base effort
-        base_effort = category_effort.get(category, {'base': 'Medium', 'hours': 6})
-        
-        # Adjust based on severity
-        severity_multiplier = {
-            'critical': 2.0,
-            'high': 1.5,
-            'medium': 1.0,
-            'low': 0.75,
-            'info': 0.5
-        }
-        
-        # Adjust based on number of instances
-        instance_multiplier = 1.0
-        if len(instances) > 5:
-            instance_multiplier = 1.5
-        elif len(instances) > 10:
-            instance_multiplier = 2.0
-        
-        # Calculate final effort
-        adjusted_hours = int(base_effort['hours'] * severity_multiplier.get(severity, 1.0) * instance_multiplier)
-        
-        # Format the response
-        if base_effort['base'] == 'Low':
-            if adjusted_hours <= 4:
-                return f'Low ({adjusted_hours} hours)'
-            else:
-                return f'Medium ({adjusted_hours} hours)'
-        elif base_effort['base'] == 'Medium':
-            if adjusted_hours <= 8:
-                return f'Medium ({adjusted_hours} hours)'
-            elif adjusted_hours <= 24:
-                return f'High ({adjusted_hours//8} days)'
-            else:
-                return f'Critical ({adjusted_hours//8} days)'
-        else:  # High
-            if adjusted_hours <= 8:
-                return f'Medium ({adjusted_hours} hours)'
-            elif adjusted_hours <= 24:
-                return f'High ({adjusted_hours//8} days)'
-            else:
-                return f'Critical ({adjusted_hours//8} days)'
+        if category in ['security headers', 'configuration', 'ssl/tls']:
+            return 'Low (1-2 hours)'
+        elif category in ['xss', 'csrf', 'input validation']:
+            return 'Medium (4-8 hours)'
+        elif category in ['sql injection', 'command injection', 'authorization']:
+            return 'High (1-3 days)'
+        elif category in ['authentication', 'session management']:
+            return 'High (2-5 days)'
+        else:
+            return 'Medium (4-8 hours)'
 
     def _assess_business_impact(self, vuln: Dict) -> str:
-        """Assess business impact based on vulnerability characteristics."""
+        """Assess business impact of vulnerability."""
         severity = vuln.get('severity', 'info').lower()
-        category = vuln.get('category', 'General').lower()
-        instances = vuln.get('instances', [])
         
-        # Base impact by severity
-        base_impacts = {
-            'critical': {
-                'financial': 'High - Potential regulatory fines, legal costs, revenue loss',
-                'reputation': 'Severe - Loss of customer trust, brand damage',
-                'operations': 'Critical - System downtime, complete service disruption',
-                'data': 'Severe - Complete data breach, sensitive data exposure'
-            },
-            'high': {
-                'financial': 'Moderate - Potential fines, remediation costs',
-                'reputation': 'Significant - Customer concern, media attention',
-                'operations': 'High - Service degradation, partial disruption',
-                'data': 'Significant - Data exposure, privacy violations'
-            },
-            'medium': {
-                'financial': 'Low - Limited remediation costs',
-                'reputation': 'Moderate - Minor customer impact',
-                'operations': 'Moderate - Limited functionality impact',
-                'data': 'Moderate - Limited data exposure'
-            },
-            'low': {
-                'financial': 'Minimal - Low remediation cost',
-                'reputation': 'Minor - Limited visibility',
-                'operations': 'Low - Minimal operational impact',
-                'data': 'Minor - Information disclosure only'
-            },
-            'info': {
-                'financial': 'None - No direct financial impact',
-                'reputation': 'None - No reputational impact',
-                'operations': 'None - No operational impact',
-                'data': 'None - No data impact'
-            }
+        impact_map = {
+            'critical': 'Severe - Potential data breach, complete system compromise, regulatory penalties',
+            'high': 'Significant - Data exposure, service disruption, reputational damage',
+            'medium': 'Moderate - Limited data exposure, partial functionality impact',
+            'low': 'Minor - Information disclosure, minimal business impact',
+            'info': 'Informational - No direct impact, compliance considerations'
         }
         
-        # Category-specific modifiers
-        category_modifiers = {
-            'authentication': {'operations': 'Critical - Account compromise possible'},
-            'session management': {'data': 'High - Session hijacking risk'},
-            'sql injection': {'data': 'Severe - Database compromise possible'},
-            'xss': {'data': 'High - User data theft, session hijacking'},
-            'csrf': {'operations': 'Moderate - Unauthorized actions possible'},
-            'security headers': {'reputation': 'Low - Compliance issues only'},
-            'ssl/tls': {'data': 'High - Data in transit exposure'}
-        }
-        
-        # Get base impact
-        impact = base_impacts.get(severity, base_impacts['info'])
-        
-        # Apply category-specific modifiers
-        if category in category_modifiers:
-            impact.update(category_modifiers[category])
-        
-        # Adjust for multiple instances
-        if len(instances) > 10:
-            impact['financial'] = impact['financial'].replace('Moderate', 'High').replace('Low', 'Moderate')
-            impact['reputation'] = impact['reputation'].replace('Moderate', 'Significant').replace('Minor', 'Moderate')
-        
-        # Format the impact assessment
-        impact_parts = [
-            f"Financial: {impact['financial']}",
-            f"Reputation: {impact['reputation']}",
-            f"Operations: {impact['operations']}",
-            f"Data: {impact['data']}"
-        ]
-        
-        return " | ".join(impact_parts)
+        return impact_map.get(severity, 'Unknown impact')
 
     def _generate_enhanced_html(self, results):
         """Generate enhanced HTML report with interactive features."""
@@ -273,6 +166,7 @@ class EnhancedReportGenerator(ProfessionalReportGenerator):
         {self._generate_platform_confidence_panel(results)}
         {self._generate_comparative_tables(results)}
         {self._generate_report_integrity_block(results)}
+        {self._generate_burp_contents(results)}
         {self._generate_platform_specific_findings(results)}
         {self._generate_enhanced_findings(results)}
         {self._generate_enhanced_footer()}
@@ -500,182 +394,6 @@ h3 { font-size: 1.1em; color: #404042; margin: 15px 0 10px 0; }
     .risk-score-value { font-size: 2em; }
     .metrics-grid { grid-template-columns: 1fr; }
 }
-/* Enhanced Findings Styles */
-.enhanced-subsection {
-    margin: 30px 0;
-    padding: 25px;
-    background: #f8fafc;
-    border-radius: 8px;
-    border-left: 4px solid #3b82f6;
-}
-.enhanced-subsection h3 {
-    color: #1e40af;
-    margin-bottom: 20px;
-    font-size: 1.4em;
-}
-.enhanced-table-container {
-    margin: 20px 0;
-}
-.enhanced-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-.enhanced-table th {
-    background: #3b82f6;
-    color: white;
-    padding: 15px;
-    text-align: left;
-    font-weight: 600;
-}
-.enhanced-table td {
-    padding: 15px;
-    border-bottom: 1px solid #e5e7eb;
-}
-.enhanced-table tr:last-child td {
-    border-bottom: none;
-}
-.status-present {
-    background: #10b981;
-    color: white;
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 0.8em;
-    font-weight: 600;
-}
-.status-missing {
-    background: #ef4444;
-    color: white;
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 0.8em;
-    font-weight: 600;
-}
-.vulnerability-card {
-    margin: 25px 0;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    border-left: 5px solid #6b7280;
-}
-.vulnerability-card.severity-critical {
-    border-left-color: #dc2626;
-    background: linear-gradient(to right, #fef2f2, #ffffff);
-}
-.vulnerability-card.severity-high {
-    border-left-color: #ea580c;
-    background: linear-gradient(to right, #fff7ed, #ffffff);
-}
-.vulnerability-card.severity-medium {
-    border-left-color: #f59e0b;
-    background: linear-gradient(to right, #fffbeb, #ffffff);
-}
-.vulnerability-card.severity-low {
-    border-left-color: #3b82f6;
-    background: linear-gradient(to right, #eff6ff, #ffffff);
-}
-.vuln-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 25px;
-    background: rgba(255,255,255,0.9);
-    border-bottom: 1px solid #e5e7eb;
-}
-.vuln-title {
-    font-size: 1.2em;
-    font-weight: 700;
-    color: #1f2937;
-}
-.confidence-badge {
-    background: #6b7280;
-    color: white;
-    padding: 6px 12px;
-    border-radius: 15px;
-    font-size: 0.75em;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-.vuln-nav {
-    padding: 15px 25px;
-    background: #f8fafc;
-    border-bottom: 1px solid #e5e7eb;
-    text-align: center;
-}
-.nav-link {
-    color: #3b82f6;
-    text-decoration: none;
-    font-weight: 600;
-    padding: 8px 16px;
-    border-radius: 6px;
-    transition: all 0.3s ease;
-}
-.nav-link:hover {
-    background: #3b82f6;
-    color: white;
-}
-.vuln-section {
-    padding: 20px 25px;
-    border-bottom: 1px solid #f3f4f6;
-}
-.vuln-section:last-child {
-    border-bottom: none;
-}
-.vuln-section h4 {
-    color: #374151;
-    margin-bottom: 12px;
-    font-size: 1.1em;
-    font-weight: 600;
-}
-.vuln-section p {
-    color: #6b7280;
-    line-height: 1.6;
-}
-.instance-item {
-    margin: 15px 0;
-    padding: 15px;
-    background: #f9fafb;
-    border-radius: 8px;
-    border: 1px solid #e5e7eb;
-}
-.instance-number {
-    display: inline-block;
-    background: #3b82f6;
-    color: white;
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 0.8em;
-    font-weight: 600;
-    margin-right: 12px;
-}
-.instance-url {
-    color: #3b82f6;
-    text-decoration: none;
-    font-weight: 600;
-}
-.instance-url:hover {
-    text-decoration: underline;
-}
-.request-response {
-    margin-top: 15px;
-}
-.request-response h5 {
-    color: #374151;
-    margin-bottom: 8px;
-    font-weight: 600;
-}
-.request-response pre {
-    background: #1f2937;
-    color: #f9fafb;
-    padding: 15px;
-    border-radius: 6px;
-    overflow-x: auto;
-    font-size: 0.85em;
-    line-height: 1.4;
-}
 </style>"""
 
     def _get_risk_color(self, risk_level):
@@ -803,7 +521,15 @@ h3 { font-size: 1.1em; color: #404042; margin: 15px 0 10px 0; }
             return '<div class="enhanced-section"><p>No vulnerabilities requiring remediation found.</p></div>'
         rows = []
         for item in remediation[:10]:
-            cwe_links = ', '.join([f"<a href='https://cwe.mitre.org/data/definitions/{c.replace('CWE-', '') if c.startswith('CWE-') else c}.html' target='_blank'>{c}</a>" for c in item['cwe'][:3]])
+            # Use references from vulnerability data, fallback to CWE links if no references
+            references = item.get('references', [])
+            if references:
+                ref_links = ', '.join([f"<a href='{ref}' target='_blank'>{ref.split('/')[-1] if '/' in ref else ref}</a>" for ref in references[:2]])
+            else:
+                # Fallback to CWE links if no references
+                cwe_list = item.get('cwe', [])
+                ref_links = ', '.join([f"<a href='https://cwe.mitre.org/data/definitions/{c.replace('CWE-', '') if c.startswith('CWE-') else c}.html' target='_blank'>{c}</a>" for c in cwe_list[:2]]) if cwe_list else f"<a href='{item.get('url', '#')}' target='_blank'>View Details</a>"
+
             rows.append(f"""
         <tr>
             <td><span class="priority-number">{item['priority']}</span></td>
@@ -813,7 +539,7 @@ h3 { font-size: 1.1em; color: #404042; margin: 15px 0 10px 0; }
             </td>
             <td><span class="severity-badge severity-{item['severity'].lower()}">{item['severity']}</span></td>
             <td>{item['estimated_effort']}</td>
-            <td>{cwe_links if cwe_links else 'N/A'}</td>
+            <td>{ref_links}</td>
         </tr>""")
         return f"""<div class="enhanced-section">
     <div class="section-header">
@@ -837,114 +563,13 @@ h3 { font-size: 1.1em; color: #404042; margin: 15px 0 10px 0; }
 </div>"""
 
     def _generate_enhanced_findings(self, results):
-        """Generate enhanced vulnerability findings section with improved layout."""
-        vulnerabilities = results.get('security_assessment', {}).get('vulnerabilities', [])
-        headers_present, headers_missing, security_score = self._collect_security_headers(results)
-        ssl = results.get('security_assessment', {}).get('ssl_tls_analysis', {})
-        
-        out = ['<div class="enhanced-section">']
-        out.append('<div class="section-header">')
-        out.append('<h2>Detailed Vulnerability Findings</h2>')
-        out.append('</div>')
-        
-        # Enhanced security headers section
-        out.append('<div class="enhanced-subsection">')
-        out.append('<h3>Security Headers Analysis</h3>')
-        if security_score:
-            out.append(f'<p class="TEXT"><b>Security Headers Score:</b> {self._escape_html(security_score)}</p>')
-        if not headers_present and not headers_missing:
-            out.append('<p class="TEXT">No security header data collected.</p>')
-        else:
-            out.append('<div class="enhanced-table-container">')
-            out.append('<table class="enhanced-table">')
-            out.append('<thead><tr><th>Header</th><th>Status</th><th>Value</th></tr></thead>')
-            out.append('<tbody>')
-            for header in sorted(headers_present.keys()):
-                value = self._escape_html(str(headers_present[header]))
-                out.append(f'<tr><td>{header}</td><td><span class="status-present">Present</span></td><td><code>{value[:160]}</code></td></tr>')
-            for header in sorted(headers_missing):
-                out.append(f'<tr><td>{header}</td><td><span class="status-missing">Missing</span></td><td>-</td></tr>')
-            out.append('</tbody></table></div>')
-        out.append('</div>')
-        
-        # Enhanced SSL/TLS section
-        out.append('<div class="enhanced-subsection">')
-        out.append('<h3>SSL/TLS Configuration</h3>')
-        out.append('<div class="enhanced-table-container">')
-        out.append('<table class="enhanced-table">')
-        out.append(f'<tr><td class="label">Grade</td><td>{ssl.get("grade", "Unknown")}</td></tr>')
-        out.append(f'<tr><td class="label">Protocol</td><td>{ssl.get("protocol_version", "Unknown")}</td></tr>')
-        out.append(f'<tr><td class="label">Cipher</td><td><code>{str(ssl.get("cipher_suite", "Unknown"))[:120]}</code></td></tr>')
-        out.append(f'<tr><td class="label">Valid Certificate</td><td>{"✓ Yes" if ssl.get("certificate_valid") else "✗ No"}</td></tr>')
-        out.append('</table></div>')
-        out.append('</div>')
-        
-        # Enhanced vulnerabilities section
-        if vulnerabilities:
-            out.append('<div class="enhanced-subsection">')
-            out.append('<h3>Vulnerability Details</h3>')
-            
-            for i, v in enumerate(vulnerabilities, 1):
-                title = v.get('title','Issue')
-                sev = v.get('severity','medium').lower()
-                conf = v.get('confidence','tentative').lower()
-                anchor_id = f"vuln_{i}_{self._create_safe_id(title)}"
-                
-                # Enhanced vulnerability card
-                out.append(f'<div class="vulnerability-card severity-{sev}" id="{anchor_id}">')
-                out.append(f'<div class="vuln-header">')
-                out.append(f'<span class="vuln-title">{i}. {title}</span>')
-                out.append(f'<span class="severity-badge severity-{sev}">{sev.capitalize()}</span>')
-                out.append(f'<span class="confidence-badge">{conf.capitalize()}</span>')
-                out.append('</div>')
-                
-                # Enhanced navigation
-                prev_anchor_id = f"vuln_{i-1}_{self._create_safe_id(vulnerabilities[i-2].get('title','Issue'))}" if i>1 else ''
-                next_anchor_id = f"vuln_{i+1}_{self._create_safe_id(vulnerabilities[i].get('title','Issue'))}" if i < len(vulnerabilities) else ''
-                nav_links = []
-                if i>1:
-                    nav_links.append(f'<a class="nav-link" href="#{prev_anchor_id}">← Previous</a>')
-                if i < len(vulnerabilities):
-                    nav_links.append(f'<a class="nav-link" href="#{next_anchor_id}">Next →</a>')
-                if nav_links:
-                    out.append(f'<div class="vuln-nav">{" | ".join(nav_links)}</div>')
-                
-                # Enhanced content sections
-                if v.get('description'):
-                    out.append(f'<div class="vuln-section"><h4>Issue Detail</h4><p>{v["description"]}</p></div>')
-                
-                if v.get('impact'):
-                    out.append(f'<div class="vuln-section"><h4>Impact</h4><p>{v["impact"]}</p></div>')
-                
-                if v.get('recommendation'):
-                    out.append(f'<div class="vuln-section"><h4>Remediation</h4><p>{v["recommendation"]}</p></div>')
-                
-                # Enhanced instances with better formatting
-                instances = v.get('instances', [])
-                if instances:
-                    out.append(f'<div class="vuln-section"><h4>Affected URLs</h4>')
-                    for j, inst in enumerate(instances, 1):
-                        url = inst.get('url','')
-                        out.append(f'<div class="instance-item">')
-                        out.append(f'<span class="instance-number">{i}.{j}</span>')
-                        out.append(f'<a href="{url}" target="_blank" class="instance-url">{url}</a>')
-                        
-                        req = inst.get('request')
-                        if req:
-                            out.append(f'<div class="request-response"><h5>Request</h5><pre>{self._escape_html(req)}</pre></div>')
-                        resp = inst.get('response')
-                        if resp:
-                            highlighted = self._highlight_evidence(self._escape_html(resp), inst.get('evidence', []))
-                            out.append(f'<div class="request-response"><h5>Response</h5><pre>{highlighted}</pre></div>')
-                        out.append(f'</div>')
-                    out.append(f'</div>')
-                
-                out.append('</div>')  # Close vulnerability card
-        else:
-            out.append('<p class="TEXT">No vulnerabilities detected.</p>')
-        
-        out.append('</div>')  # Close enhanced-section
-        return '\n'.join(out)
+        """Generate enhanced vulnerability findings section."""
+        return f"""<div class="enhanced-section">
+    <div class="section-header">
+        <h2>Detailed Vulnerability Findings</h2>
+    </div>
+    {self._generate_burp_findings(results)}
+</div>"""
 
     def _generate_enhanced_footer(self):
         """Generate enhanced footer."""

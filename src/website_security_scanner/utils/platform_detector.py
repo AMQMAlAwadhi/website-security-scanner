@@ -54,12 +54,19 @@ class AdvancedPlatformDetector:
                     r'OutSystemsNow',
                     r'RichWidgets',
                     r'Screen\.aspx',
-                    r'wicket.*outsystems'
+                    r'wicket.*outsystems',
+                    r'_osjs',
+                    r'osVisitor',
+                    r'osVisit',
+                    r'id=[\'"]OutSystemsUI_',
+                    r'OutSystems\.Web\.JavaScript'
                 ],
                 'script_patterns': [
                     r'outsystems.*\.js',
                     r'RichWidgets.*\.js',
-                    r'Screen\.aspx.*\.js'
+                    r'Screen\.aspx.*\.js',
+                    r'_osjs.*\.js',
+                    r'OutSystemsUI.*\.js'
                 ],
                 'meta_patterns': [
                     r'generator.*outsystems',
@@ -191,8 +198,8 @@ class AdvancedPlatformDetector:
             },
             "outsystems": {
                 "headers": ["x-outsystems-"],
-                "content": [r'outsystemsui', r'outsystemsnow', r'richwidgets'],
-                "scripts": [r'outsystems.*\.js', r'richwidgets.*\.js'],
+                "content": [r'outsystemsui', r'outsystemsnow', r'richwidgets', r'_osjs', r'osVisitor', r'osVisit', r'id=[\'"]OutSystemsUI_'],
+                "scripts": [r'outsystems.*\.js', r'richwidgets.*\.js', r'_osjs.*\.js'],
                 "meta": [r'generator.*outsystems'],
             },
             "airtable.com": {
@@ -372,6 +379,8 @@ class AdvancedPlatformDetector:
         try:
             parsed = urlparse(url)
             hostname = (parsed.hostname or '').lower()
+            if "outsystems" in hostname:
+                return "outsystems"
             if hostname.endswith("bubbleapps.io") or "bubble.io" in hostname:
                 return "bubble.io"
             if hostname.endswith("myshopify.com"):
@@ -382,8 +391,6 @@ class AdvancedPlatformDetector:
                 return "wix"
             if "mendix" in hostname:
                 return "mendix"
-            if "outsystems" in hostname:
-                return "outsystems"
             if "airtable" in hostname:
                 return "airtable.com"
         except Exception:
@@ -526,7 +533,7 @@ class AdvancedPlatformDetector:
         return results
     
     # Minimum confidence threshold for platform detection (percentage)
-    MIN_CONFIDENCE_THRESHOLD = 40
+    MIN_CONFIDENCE_THRESHOLD = 25
     
     # High confidence threshold for automatic selection
     HIGH_CONFIDENCE_THRESHOLD = 70
@@ -534,11 +541,14 @@ class AdvancedPlatformDetector:
     def _calculate_confidence(self, score: int) -> int:
         """Calculate confidence percentage from score."""
         # Normalize score to 0-100 range with diminishing returns for very high scores
-        # Use a more conservative formula to avoid over-confidence
+        # Use a more aggressive formula for better platform detection
         if score <= 0:
             return 0
+        elif score <= 30:
+            # More aggressive scaling for lower scores to help domain-based detection
+            confidence = score * 1.8
         elif score <= 50:
-            # Linear scaling for lower scores
+            # Linear scaling for medium scores
             confidence = score * 1.2
         else:
             # Diminishing returns for higher scores

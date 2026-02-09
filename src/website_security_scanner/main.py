@@ -41,11 +41,12 @@ from .analyzers import (
     analyze_platform_security,
 )
 from .analyzers.reports import SecurityReportGenerator
-from .report_generator import ProfessionalReportGenerator
+from .standards_report_generator import StandardsBasedReportGenerator
 from .result_transformer import transform_results_for_professional_report
 from .utils.platform_detector import AdvancedPlatformDetector
 from .utils.evidence_verifier import verify_vulnerabilities
 from .utils.rate_limiter import RateLimiter, ThrottledSession
+from .utils.tech_stack_detector import TechStackDetector
 from .models.vulnerability import EnhancedVulnerability, ScanResult
 from .plugins.plugin_manager import PluginManager
 from .utils.parallel_scanner import ParallelScanner, create_parallel_scan
@@ -89,6 +90,7 @@ class LowCodeSecurityScanner:
         
         self.results = {}
         self.platform_detector = AdvancedPlatformDetector(self.session)
+        self.tech_stack_detector = TechStackDetector(self.session)
         self._last_platform_detection = {}
         
         # Advanced features
@@ -173,6 +175,24 @@ class LowCodeSecurityScanner:
 
             # SSL/TLS analysis
             target_results["ssl_analysis"] = self.analyze_ssl(url)
+
+            # Technology stack detection
+            try:
+                target_results["tech_stack"] = self.tech_stack_detector.detect_tech_stack(
+                    url, response
+                )
+            except Exception as e:
+                target_results["tech_stack"] = {
+                    'server': {'detected': [], 'evidence': {}},
+                    'backend': {'detected': [], 'evidence': {}},
+                    'frontend': {'detected': [], 'evidence': {}},
+                    'all': {'detected': [], 'evidence': {}},
+                    'error': str(e),
+                }
+                target_results["scan_warnings"].append({
+                    "message": "Tech stack detection failed",
+                    "error": str(e),
+                })
 
             if not self._is_scannable_response(response):
                 target_results["scan_warnings"].append({
@@ -301,6 +321,26 @@ class LowCodeSecurityScanner:
         except requests.exceptions.RequestException as e:
             print(f"[-] Error scanning {url}: {e}")
             target_results["error"] = str(e)
+            # Set verification summaries to indicate no verification was possible due to connection failure
+            target_results["verification_summary"] = {
+                "total_vulnerabilities": 0,
+                "verified_vulnerabilities": 0,
+                "high_confidence_verifications": 0,
+                "verification_rate": 0.0,
+                "disabled": True,
+                "reason": "Connection failed - no response received"
+            }
+            target_results["evidence_verification_summary"] = {
+                "total_vulnerabilities": 0,
+                "verified": 0,
+                "stale": 0,
+                "unverified": 0,
+                "failed": 0,
+                "live_checked": 0,
+                "verification_rate": 0.0,
+                "disabled": True,
+                "reason": "Connection failed - no response received"
+            }
 
         return target_results
 
@@ -349,16 +389,36 @@ class LowCodeSecurityScanner:
             plugin_results = self.plugin_manager.execute_all_plugins(url, basic_results)
         
         # Create enhanced scan result
+        # Extract platform-specific findings
+        platform_specific_findings = {}
+        platform_type = basic_results.get('platform_type', 'Unknown')
+        if platform_type == 'bubble':
+            platform_specific_findings = basic_results.get('bubble_specific', {})
+        elif platform_type == 'outsystems':
+            platform_specific_findings = basic_results.get('outsystems_specific', {})
+        elif platform_type == 'airtable':
+            platform_specific_findings = basic_results.get('airtable_specific', {})
+        elif platform_type == 'shopify':
+            platform_specific_findings = basic_results.get('shopify_specific', {})
+        elif platform_type == 'webflow':
+            platform_specific_findings = basic_results.get('webflow_specific', {})
+        elif platform_type == 'wix':
+            platform_specific_findings = basic_results.get('wix_specific', {})
+        elif platform_type == 'mendix':
+            platform_specific_findings = basic_results.get('mendix_specific', {})
+        elif platform_type == 'generic':
+            platform_specific_findings = basic_results.get('generic_specific', {})
+
         scan_result = ScanResult(
             scan_id=f"enhanced_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
             url=url,
-            platform=basic_results.get('platform_type', 'Unknown'),
+            platform=platform_type,
             timestamp=datetime.now().isoformat(),
             vulnerability_findings=enhanced_vulnerabilities,
             security_assessment={
                 'risk_score': self._calculate_risk_score(enhanced_vulnerabilities),
                 'severity_counts': self._get_severity_counts(enhanced_vulnerabilities),
-                'platform_risks': self._assess_platform_risks(basic_results.get('platform_type', 'Unknown')),
+                'platform_risks': self._assess_platform_risks(platform_type),
                 'security_headers': basic_results.get('security_headers', {}),
                 'ssl_tls_analysis': basic_results.get('ssl_analysis', {}),
                 'request_headers': basic_results.get('request_headers', {}),
@@ -380,7 +440,8 @@ class LowCodeSecurityScanner:
                 'scan_duration': 0,  # Would be calculated in real implementation
                 'vulnerability_count': len(enhanced_vulnerabilities),
                 'plugin_results_count': len(plugin_results) if plugin_results else 0
-            }
+            },
+            platform_specific_findings=platform_specific_findings
         )
         
         print(f"[+] Enhanced scan completed. Found {len(enhanced_vulnerabilities)} vulnerabilities")
@@ -460,15 +521,34 @@ class LowCodeSecurityScanner:
         return compliance_coverage
 
     def identify_platform(self, url):
-        """Enhanced platform identification using advanced detection with confidence gating."""
+        """Enhanced platform identification using URL patterns as hints for advanced detection."""
+        # Infer platform hint from URL
+        url_lower = url.lower()
+        platform_hint = None
+        
+        if 'outsystems.app' in url_lower or 'outsystems' in url_lower:
+            platform_hint = 'outsystems'
+        elif 'bubble' in url_lower or 'bubbleapps.io' in url_lower:
+            platform_hint = 'bubble'
+        elif 'airtable' in url_lower or 'airtable.com' in url_lower:
+            platform_hint = 'airtable'
+        elif 'shopify' in url_lower or 'myshopify.com' in url_lower:
+            platform_hint = 'shopify'
+        elif 'webflow' in url_lower:
+            platform_hint = 'webflow'
+        elif 'wix' in url_lower or 'wixstatic.com' in url_lower or 'parastorage.com' in url_lower:
+            platform_hint = 'wix'
+        elif 'mendix' in url_lower or 'mxclientsystem' in url_lower:
+            platform_hint = 'mendix'
+
         try:
-            # Use advanced platform detection
-            detection_result = self.platform_detector.detect_platform_advanced(url)
+            # Use advanced platform detection with hint
+            detection_result = self.platform_detector.detect_platform_advanced(url, platform_hint)
             self._last_platform_detection = detection_result
-            
+
             # Apply confidence gating
             platform, confidence = self.platform_detector.get_primary_platform(detection_result)
-            
+
             if platform and confidence >= self.platform_detector.MIN_CONFIDENCE_THRESHOLD:
                 normalized = self._normalize_platform_type(platform)
                 print(f"[+] Platform detected: {normalized} ({confidence}% confidence)")
@@ -479,7 +559,7 @@ class LowCodeSecurityScanner:
             else:
                 # Fallback to basic detection
                 return self._normalize_platform_type(self._basic_platform_identification(url))
-                
+
         except Exception as e:
             print(f"[!] Platform detection failed: {e}")
             self._last_platform_detection = {"error": str(e), "detected_platforms": ["unknown"], "confidence_scores": {"unknown": 0}}
@@ -490,9 +570,23 @@ class LowCodeSecurityScanner:
         if not platform:
             return "generic"
         platform_lower = platform.lower()
-        alias_map = getattr(self.platform_detector, "platform_aliases", {}) or {}
-        if platform_lower in alias_map:
-            return alias_map[platform_lower]
+        
+        # Direct mapping
+        if platform_lower == "outsystems":
+            return "outsystems"
+        elif platform_lower in ["bubble", "bubble.io"]:
+            return "bubble"
+        elif platform_lower in ["airtable", "airtable.com"]:
+            return "airtable"
+        elif platform_lower == "shopify":
+            return "shopify"
+        elif platform_lower == "webflow":
+            return "webflow"
+        elif platform_lower == "wix":
+            return "wix"
+        elif platform_lower == "mendix":
+            return "mendix"
+        
         return platform_lower
     
     def _basic_platform_identification(self, url):
@@ -529,10 +623,9 @@ class LowCodeSecurityScanner:
             return False
         if response.status_code >= 400:
             return False
-        content_type = response.headers.get("Content-Type", "").lower()
-        if not content_type:
-            return True
-        return "text/html" in content_type or "application/xhtml+xml" in content_type
+        # Allow analysis of all successful responses, not just HTML
+        # Security headers and other checks should be performed regardless of content type
+        return True
 
     def _normalize_severity(self, severity: str) -> str:
         if not severity:
@@ -1112,10 +1205,10 @@ class LowCodeSecurityScanner:
             return self.generate_text_report(results)
 
     def generate_html_report(self, results):
-        """Generate HTML security report"""
+        """Generate HTML security report using standards-based generator"""
         structured_results = transform_results_for_professional_report(results)
-        report_generator = ProfessionalReportGenerator()
-        return report_generator.generate_html_content(structured_results)
+        report_generator = StandardsBasedReportGenerator()
+        return report_generator._generate_html_content(structured_results, enhanced=True)
 
     def generate_text_report(self, results):
         """Generate text-based security report"""

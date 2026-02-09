@@ -88,6 +88,7 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
         self._check_linkfinder(js_content)
         self._check_hsts(response, url)
         self._check_content_type_options(response)
+        self._check_security_headers(response)
         self._check_vulnerable_dependencies(js_content)
         self._check_robots_txt(url)
         self._check_directory_traversal(url, response)
@@ -349,14 +350,17 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                         confidence="Tentative",
                         category="Information Disclosure",
                         owasp="A01:2021 - Broken Access Control",
-                        cwe=["CWE-200"]
+                        cwe=["CWE-200"],
+                        references=[
+                            "https://owasp.org/Top10/A01_2021-Broken_Access_Control/",
+                            "https://cwe.mitre.org/data/definitions/200.html",
+                            "https://owasp.org/www-project-web-security-testing-guide/"
+                        ]
                     )
 
     def _check_hsts(self, response: requests.Response, url: str = ""):
         """Check HSTS implementation"""
         if url and not url.lower().startswith("https://"):
-            return
-        if not self._is_html_response(response):
             return
         hsts = response.headers.get("Strict-Transport-Security", "")
         if not hsts:
@@ -374,8 +378,6 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
 
     def _check_content_type_options(self, response: requests.Response):
         """Check X-Content-Type-Options"""
-        if not self._is_html_response(response):
-            return
         xcto = response.headers.get("X-Content-Type-Options", "")
         if xcto != "nosniff":
             self.add_enriched_vulnerability(
@@ -389,6 +391,30 @@ class GenericWebAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                 owasp="A05:2021 - Security Misconfiguration",
                 cwe=["CWE-173"]
             )
+
+    def _check_security_headers(self, response: requests.Response):
+        """Check for missing important security headers"""
+        headers_to_check = [
+            ("X-Frame-Options", "Low", "Missing X-Frame-Options header"),
+            ("X-XSS-Protection", "Info", "Missing X-XSS-Protection header"),
+            ("Referrer-Policy", "Low", "Missing Referrer-Policy header"),
+            ("Permissions-Policy", "Info", "Missing Permissions-Policy header"),
+            ("X-Permitted-Cross-Domain-Policies", "Info", "Missing X-Permitted-Cross-Domain-Policies header"),
+        ]
+        
+        for header, severity, title in headers_to_check:
+            if header not in response.headers:
+                self.add_enriched_vulnerability(
+                    title,
+                    severity,
+                    f"The {header} security header is missing",
+                    "",
+                    f"Implement the {header} header to enhance security",
+                    confidence="Tentative",
+                    category="Security Headers",
+                    owasp="A05:2021 - Security Misconfiguration",
+                    cwe=["CWE-16"]
+                )
 
     def _check_vulnerable_dependencies(self, js_content: str):
         """Check for potentially vulnerable dependencies"""
