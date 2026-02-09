@@ -36,7 +36,7 @@ def _safe_duration(start_timestamp: Any) -> str:
 def transform_results_for_professional_report(raw_results):
     """
     Transforms the raw scan data from the scanner into a format suitable for the
-    ProfessionalReportGenerator.
+    StandardsBasedReportGenerator.
     
     Args:
         raw_results (dict): The raw results from the LowCodeSecurityScanner.
@@ -56,19 +56,10 @@ def transform_results_for_professional_report(raw_results):
         # Prefer analyzer-provided instances; otherwise build a single instance
         instances = vuln.get("instances")
         if not instances:
-            # Build default instance with fallback to scan-level HTTP context
-            request_data = vuln.get("request")
-            response_data = vuln.get("response")
-            if not request_data and not response_data:
-                # Fallback to scan-level request/response
-                rr = raw_results.get("request_response", {})
-                request_data = rr.get("request")
-                response_data = rr.get("response")
-            
             instances = [{
                 "url": base_url,
-                "request": request_data,
-                "response": response_data,
+                "request": vuln.get("request"),
+                "response": vuln.get("response"),
                 "evidence": evidence_list,
             }]
 
@@ -117,6 +108,16 @@ def transform_results_for_professional_report(raw_results):
     if platform == "generic":
         specific_findings = specific_findings or raw_results.get("generic_analysis") or raw_results.get("generic_findings")
 
+    # Include tech stack detection results
+    tech_stack = raw_results.get("tech_stack", {})
+    if not tech_stack:
+        tech_stack = {
+            'server': {'detected': [], 'evidence': {}},
+            'backend': {'detected': [], 'evidence': {}},
+            'frontend': {'detected': [], 'evidence': {}},
+            'all': {'detected': [], 'evidence': {}},
+        }
+
     # Calculate scores using standardizer
     overall_score = calculate_overall_score(vulnerabilities)
     risk_level = calculate_risk_level(overall_score)
@@ -137,13 +138,10 @@ def transform_results_for_professional_report(raw_results):
             "scan_profile_hash": raw_results.get("scan_profile_hash", "N/A"),
             "dataset_version": raw_results.get("dataset_version", "N/A"),
             "git_commit": raw_results.get("git_commit", "N/A"),
-            "request_headers": raw_results.get("request_headers", {}),
-            "response_headers": raw_results.get("response_headers", {}),
-            "request_response": raw_results.get("request_response", {}),
         },
         "platform_analysis": {
             "platform_type": platform,
-            "technology_stack": [],  # This might need more logic to populate
+            "technology_stack": tech_stack,
             "specific_findings": specific_findings or {},
             "platform_detection": raw_results.get("platform_detection", {}),
         },

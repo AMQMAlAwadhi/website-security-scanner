@@ -369,6 +369,19 @@ class CommonWebChecksMixin:
                     cwe=["CWE-1004"],
                 )
 
+            if "samesite" not in cookie_lower:
+                self.add_enriched_vulnerability(
+                    "Cookie without SameSite Attribute",
+                    "Low",
+                    f"Cookie '{cookie_name}' lacks SameSite attribute",
+                    cookie[:100],
+                    "Set the 'SameSite' attribute (Lax or Strict) for all cookies to protect against CSRF attacks.",
+                    confidence="Tentative",
+                    category="Session Management",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-1275"]
+                )
+
     def _check_csp_policy(self, response: requests.Response):
         """Check Content Security Policy."""
         if not self._is_html_response(response):

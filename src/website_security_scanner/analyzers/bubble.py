@@ -639,25 +639,21 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                 )
 
     def _check_cookie_security(self, response: requests.Response):
-        """Check cookie security attributes"""
+        """Check cookie security headers."""
         cookies = self._get_set_cookie_headers(response)
-        if not cookies:
-            return
 
         for cookie in cookies:
             cookie_name = cookie.split("=", 1)[0] if "=" in cookie else "Unknown"
-            cookie_value = cookie.split("=", 1)[1] if "=" in cookie else ""
-            cookie_full = f"{cookie_name}={cookie_value}"
-            cookie_lower = cookie_full.lower()
+            cookie_lower = cookie.lower()
 
-            # Check for missing Secure attribute on cookies in HTTPS sessions
             if "secure" not in cookie_lower:
                 self.add_enriched_vulnerability(
                     "Insecure Cookie (Missing Secure Flag)",
-                    "Medium",
+                    "Low",
                     f"Cookie '{cookie_name}' lacks Secure flag",
                     cookie[:100],
                     "Set the 'Secure' flag for all cookies to ensure they are only transmitted over HTTPS.",
+                    confidence="Tentative",
                     category="Session Management",
                     owasp="A05:2021 - Security Misconfiguration",
                     cwe=["CWE-614"]
@@ -670,6 +666,7 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                     f"Cookie '{cookie_name}' lacks HttpOnly flag",
                     cookie[:100],
                     "Set the 'HttpOnly' flag for all cookies to prevent them from being accessed by client-side scripts.",
+                    confidence="Tentative",
                     category="Session Management",
                     owasp="A05:2021 - Security Misconfiguration",
                     cwe=["CWE-1004"]
@@ -682,6 +679,7 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                     f"Cookie '{cookie_name}' lacks SameSite attribute",
                     cookie[:100],
                     "Set the 'SameSite' attribute (Lax or Strict) for all cookies to protect against CSRF attacks.",
+                    confidence="Tentative",
                     category="Session Management",
                     owasp="A01:2021 - Broken Access Control",
                     cwe=["CWE-1275"]
@@ -893,8 +891,13 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                         "Review exposed endpoints and implement proper access controls",
                         confidence="Tentative",
                         category="Information Disclosure",
-                        owasp="A01:2021 - Broken Access Control",
-                        cwe=["CWE-200"]
+                        owasp="A04:2021 - Insecure Design",
+                        cwe=["CWE-200"],
+                        references=[
+                            "https://owasp.org/Top10/A04_2021-Insecure_Design/",
+                            "https://cwe.mitre.org/data/definitions/200.html",
+                            "https://owasp.org/www-project-web-security-testing-guide/"
+                        ]
                     )
 
     def _check_hsts(self, response: requests.Response, url: str = ""):
