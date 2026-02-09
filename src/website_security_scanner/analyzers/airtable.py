@@ -715,7 +715,9 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
 
         for cookie in cookies:
             cookie_name = cookie.split("=", 1)[0] if "=" in cookie else "Unknown"
-            cookie_lower = cookie.lower()
+            cookie_value = cookie.split("=", 1)[1] if "=" in cookie else ""
+            cookie_full = f"{cookie_name}={cookie_value}"
+            cookie_lower = cookie_full.lower()
 
             # Check for missing Secure attribute on cookies in HTTPS sessions
             if "secure" not in cookie_lower:
