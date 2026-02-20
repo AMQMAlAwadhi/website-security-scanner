@@ -10,26 +10,27 @@ comprehensive security analysis capabilities.
 Author: Bachelor Thesis Project - Low-Code Platforms Security Analysis
 """
 
+import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
-import logging
 
 import requests
 from bs4 import BeautifulSoup
 
+from ..config.constants import CONFIDENCE_LEVELS, SEVERITY_LEVELS
 from ..exceptions import AnalysisError
+from ..result_standardizer import normalize_severity
 from ..utils.logger import get_logger
 from ..verifier import VulnerabilityVerifier
-from ..config.constants import SEVERITY_LEVELS, CONFIDENCE_LEVELS
-from ..result_standardizer import normalize_severity
+
 
 class BaseAnalyzer:
     """
     Professional base class for all security analyzers.
-    
+
     This class provides comprehensive vulnerability management, HTTP context recording,
     and enriched reporting capabilities that are consistent across all platform analyzers.
-    
+
     All platform-specific analyzers should inherit from this class to ensure
     consistent professional-grade reporting and analysis capabilities.
     """
@@ -37,7 +38,7 @@ class BaseAnalyzer:
     def __init__(self, session: requests.Session):
         """
         Initialize base analyzer with session and enriched reporting capabilities.
-        
+
         Args:
             session: Configured requests session for HTTP operations
         """
@@ -54,11 +55,11 @@ class BaseAnalyzer:
         self.max_external_js_assets: int = 8
         self.allow_third_party_js: bool = False
         self.max_js_bytes: int = 512 * 1024
-        
+
         # HTTP context tracking for enriched vulnerability reporting
         self._last_request: Optional[requests.PreparedRequest] = None
         self._last_response: Optional[requests.Response] = None
-        
+
         # Logger for professional error handling and debugging
         self.logger = get_logger(self.__class__.__name__)
 
@@ -102,15 +103,15 @@ class BaseAnalyzer:
     ) -> Dict[str, Any]:
         """
         Base analyze method to be overridden by subclasses.
-        
+
         Args:
             url: Target URL being analyzed
             response: HTTP response from target
             soup: Parsed BeautifulSoup object
-            
+
         Returns:
             Dictionary containing analysis results
-            
+
         Raises:
             NotImplementedError: If subclass doesn't implement this method
         """
@@ -119,10 +120,10 @@ class BaseAnalyzer:
     def _record_http_context(self, url: str, response: requests.Response):
         """
         Store the primary HTTP request/response for enriched vulnerability reporting.
-        
+
         This method captures the HTTP context that will be included in vulnerability
         reports to provide complete Request/Response pairs for professional reporting.
-        
+
         Args:
             url: URL being analyzed
             response: HTTP response object
@@ -139,20 +140,19 @@ class BaseAnalyzer:
     ) -> Dict[str, Any]:
         """
         Build HTTP instance dictionary for vulnerability reporting.
-        
+
         Creates a structured HTTP instance containing request/response headers
-        and evidence highlighting. Bodies are intentionally omitted to focus on
-        protocol context while reducing report size and avoiding data leakage.
-        
+        and truncated response bodies for evidence highlighting.
+
         Args:
             evidence_list: List of evidence items to highlight in the report
-            
+
         Returns:
             Dictionary containing HTTP instance data
         """
         req_txt = ""
         resp_txt = ""
-        
+
         if self._last_request is not None:
             try:
                 method = getattr(self._last_request, "method", "GET")
@@ -167,7 +167,7 @@ class BaseAnalyzer:
             except Exception as e:
                 self.logger.debug(f"Error building request text: {e}")
                 req_txt = ""
-        
+
         if self._last_response is not None:
             try:
                 status = self._last_response.status_code
@@ -176,16 +176,38 @@ class BaseAnalyzer:
                     f"{k}: {v}" for k, v in self._last_response.headers.items()
                 )
                 resp_txt = f"HTTP/1.1 {status} {reason}\n{headers}"
+
+                # Add truncated response body for evidence highlighting
+                try:
+                    # Use .content to get raw bytes and decode, which can be more reliable
+                    body_bytes = self._last_response.content
+                    if body_bytes:
+                        try:
+                            body = body_bytes.decode("utf-8")
+                        except UnicodeDecodeError:
+                            body = body_bytes.decode("latin-1", errors="replace")
+
+                        if body and len(body) > 0:
+                            # Truncate to 50KB to avoid memory issues
+                            max_body_size = 50 * 1024
+                            if len(body) > max_body_size:
+                                body = (
+                                    body[:max_body_size]
+                                    + "\n\n[Response body truncated]"
+                                )
+                            resp_txt += "\n\n" + body
+                except Exception as e:
+                    self.logger.debug(f"Error adding response body: {e}")
             except Exception as e:
                 self.logger.debug(f"Error building response text: {e}")
                 resp_txt = ""
-        
+
         url = ""
         if self._last_request:
             url = getattr(self._last_request, "url", "")
         elif self._last_response:
             url = getattr(self._last_response, "url", "")
-        
+
         return {
             "url": url,
             "request": req_txt,
@@ -224,6 +246,27 @@ class BaseAnalyzer:
             reason = getattr(response, "reason", "")
             headers = "\n".join(f"{k}: {v}" for k, v in response.headers.items())
             resp_txt = f"HTTP/1.1 {status} {reason}\n{headers}"
+
+            # Add truncated response body for evidence highlighting
+            try:
+                # Use .content to get raw bytes and decode, which can be more reliable
+                body_bytes = response.content
+                if body_bytes:
+                    try:
+                        body = body_bytes.decode("utf-8")
+                    except UnicodeDecodeError:
+                        body = body_bytes.decode("latin-1", errors="replace")
+
+                    if body and len(body) > 0:
+                        # Truncate to 50KB to avoid memory issues
+                        max_body_size = 50 * 1024
+                        if len(body) > max_body_size:
+                            body = (
+                                body[:max_body_size] + "\n\n[Response body truncated]"
+                            )
+                        resp_txt += "\n\n" + body
+            except Exception as e:
+                self.logger.debug(f"Error adding response body: {e}")
         except Exception as e:
             self.logger.debug(f"Error building response text: {e}")
             resp_txt = ""
@@ -253,10 +296,10 @@ class BaseAnalyzer:
     ):
         """
         Add a vulnerability to the findings with detailed metadata.
-        
+
         This is the standard method for reporting vulnerabilities. For enhanced
         reporting with background, impact, and references, use add_enriched_vulnerability.
-        
+
         Args:
             vuln_type: Type/name of the vulnerability
             severity: Severity level (Critical, High, Medium, Low, Info)
@@ -293,9 +336,11 @@ class BaseAnalyzer:
             "timestamp": self._get_timestamp(),
         }
         if self._last_response is not None and "instances" not in vulnerability:
-            vulnerability["instances"] = [self._build_http_instance(evidence_list=evidence_list)]
+            vulnerability["instances"] = [
+                self._build_http_instance(evidence_list=evidence_list)
+            ]
         self.vulnerabilities.append(vulnerability)
-        
+
         # Log vulnerability discovery
         self.logger.warning(
             f"Vulnerability found: {vuln_type} ({severity})",
@@ -305,7 +350,7 @@ class BaseAnalyzer:
                     "severity": severity,
                     "confidence": confidence,
                 }
-            }
+            },
         )
 
     def add_enriched_vulnerability(
@@ -329,11 +374,11 @@ class BaseAnalyzer:
     ):
         """
         Add enriched vulnerability with comprehensive metadata and HTTP context.
-        
+
         This method extends the standard vulnerability reporting with additional
         professional-grade metadata including background information, impact analysis,
         references, and HTTP request/response pairs for Burp-style reporting.
-        
+
         Args:
             vuln_type: Type/name of the vulnerability
             severity: Severity level (Critical, High, Medium, Low, Info)
@@ -357,7 +402,7 @@ class BaseAnalyzer:
         else:
             evidence_list = [evidence] if evidence else []
             evidence_str = evidence
-        
+
         confidence = self._normalize_confidence(confidence)
         # Call standard add_vulnerability to ensure consistent base behavior
         self.add_vulnerability(
@@ -373,17 +418,44 @@ class BaseAnalyzer:
             parameter,
             url,
         )
-        
+
         # Enhance the last added vulnerability with enriched metadata
         vuln = self.vulnerabilities[-1]
         vuln["background"] = background or ""
         vuln["impact"] = impact or ""
-        vuln["references"] = references or []
+
+        # Ensure references are valid URLs or provide fallback
+        valid_references = []
+        if references:
+            valid_references = [
+                ref
+                for ref in references
+                if ref and isinstance(ref, str) and ref.lower() != "n/a"
+            ]
+
+        if valid_references:
+            vuln["references"] = valid_references
+        else:
+            # Provide fallback references based on CWE
+            fallback_refs = []
+            if cwe:
+                for c in cwe:
+                    cwe_num = (
+                        c.replace("CWE-", "")
+                        if isinstance(c, str) and c.startswith("CWE-")
+                        else c
+                    )
+                    fallback_refs.append(
+                        f"https://cwe.mitre.org/data/definitions/{cwe_num}.html"
+                    )
+            if owasp and owasp != "N/A":
+                fallback_refs.append("https://owasp.org/www-project-top-ten/")
+            vuln["references"] = fallback_refs
 
         for key, value in (extra_fields or {}).items():
             if key not in vuln:
                 vuln[key] = value
-        
+
         # Add HTTP instance for professional Burp-style reporting
         if http_response is not None:
             vuln["instances"] = [
@@ -397,7 +469,7 @@ class BaseAnalyzer:
     def _get_timestamp(self) -> str:
         """
         Get current timestamp for vulnerability logging.
-        
+
         Returns:
             ISO format timestamp string
         """
@@ -406,13 +478,13 @@ class BaseAnalyzer:
     def check_security_headers(self, response: requests.Response) -> Dict[str, Any]:
         """
         Analyze security headers in the HTTP response.
-        
+
         Evaluates the presence and configuration of critical security headers
         that protect against common web vulnerabilities.
-        
+
         Args:
             response: HTTP response to analyze
-            
+
         Returns:
             Dictionary containing header analysis results and security score
         """
@@ -443,18 +515,18 @@ class BaseAnalyzer:
     def analyze_ssl_tls(self, url: str) -> Dict[str, Any]:
         """
         Analyze SSL/TLS configuration of the target.
-        
+
         Performs comprehensive SSL/TLS analysis including certificate validation,
         cipher suite evaluation, and protocol version checking.
-        
+
         Args:
             url: Target URL to analyze
-            
+
         Returns:
             Dictionary containing SSL/TLS analysis results
         """
-        import ssl
         import socket
+        import ssl
         from urllib.parse import urlparse
 
         parsed_url = urlparse(url)
@@ -486,7 +558,7 @@ class BaseAnalyzer:
     def get_results(self) -> Dict[str, Any]:
         """
         Get comprehensive analysis results.
-        
+
         Returns:
             Dictionary containing all vulnerabilities, findings, and metrics
         """
@@ -500,7 +572,7 @@ class BaseAnalyzer:
     def _get_severity_breakdown(self) -> Dict[str, int]:
         """
         Calculate breakdown of vulnerabilities by severity level.
-        
+
         Returns:
             Dictionary mapping severity levels to counts
         """
@@ -512,25 +584,25 @@ class BaseAnalyzer:
             "Info": 0,
             "Information": 0,
         }
-        
+
         for vuln in self.vulnerabilities:
             severity = vuln.get("severity", "Info")
             if severity in breakdown:
                 breakdown[severity] += 1
-        
+
         return breakdown
 
     def verify_vulnerabilities(self, url: str) -> Dict[str, Any]:
         """
         Actively verify detected vulnerabilities using safe payload testing.
-        
+
         This method integrates with the VulnerabilityVerifier to confirm that
         detected vulnerabilities are actually exploitable. It performs safe
         exploitation attempts and updates confidence levels based on verification results.
-        
+
         Args:
             url: Target URL being analyzed
-            
+
         Returns:
             Dictionary containing verification summary statistics
         """
@@ -540,95 +612,108 @@ class BaseAnalyzer:
                 "total_vulnerabilities": 0,
                 "verified_vulnerabilities": 0,
                 "high_confidence_verifications": 0,
-                "verification_rate": 0.0
+                "verification_rate": 0.0,
             }
-        
+
         # Initialize vulnerability verifier
         verifier = VulnerabilityVerifier(self.session)
-        
+
         # Get the last response if available for verification context
         response = self._last_response if self._last_response else None
-        
+
         verified_count = 0
         high_confidence_count = 0
-        
-        self.logger.info(f"Starting active verification for {len(self.vulnerabilities)} vulnerabilities")
-        
+
+        self.logger.info(
+            f"Starting active verification for {len(self.vulnerabilities)} vulnerabilities"
+        )
+
         for i, vuln in enumerate(self.vulnerabilities):
-            vuln_type = vuln.get('type', '')
-            
+            vuln_type = vuln.get("type", "")
+
             # Skip verification for certain vulnerability types that don't benefit from active testing
             skip_types = [
-                'Missing Security Header',
-                'SSL/TLS Issue',
-                'Information Disclosure',
-                'Cookie Security',
-                'Session Token in URL'
+                "SSL/TLS Issue",
+                "Information Disclosure",
+                "Cookie Security",
+                "Session Token in URL",
             ]
-            
+
             if any(skip_type in vuln_type for skip_type in skip_types):
                 # Mark as pattern match only
-                vuln['verification'] = {
-                    'verified': False,
-                    'confidence': 'tentative',
-                    'method': 'static_analysis',
-                    'note': 'This vulnerability type is verified via static analysis only'
+                vuln["verification"] = {
+                    "verified": False,
+                    "confidence": "tentative",
+                    "method": "static_analysis",
+                    "note": "This vulnerability type is verified via static analysis only",
                 }
                 continue
-            
+
             # Perform active verification for exploitable vulnerabilities
             try:
                 verification_result = verifier.verify_vulnerability(vuln)
 
                 # Normalize verification fields for reporting consistency
-                if 'payload' in verification_result and 'payload_used' not in verification_result:
-                    verification_result['payload_used'] = verification_result.get('payload')
-                if 'reason' in verification_result and 'note' not in verification_result:
-                    verification_result['note'] = verification_result.get('reason')
-                if 'method' not in verification_result:
-                    verification_result['method'] = 'active_testing'
-                
+                if (
+                    "payload" in verification_result
+                    and "payload_used" not in verification_result
+                ):
+                    verification_result["payload_used"] = verification_result.get(
+                        "payload"
+                    )
+                if (
+                    "reason" in verification_result
+                    and "note" not in verification_result
+                ):
+                    verification_result["note"] = verification_result.get("reason")
+                if "method" not in verification_result:
+                    verification_result["method"] = "active_testing"
+
                 # Update vulnerability with verification results
-                self.vulnerabilities[i]['verification'] = verification_result
-                
+                self.vulnerabilities[i]["verification"] = verification_result
+
                 # Track verification statistics
                 verification = verification_result
-                if verification.get('verified', False):
+                if verification.get("verified", False):
                     verified_count += 1
                     high_confidence_count += 1
-                    
+
                     # Update confidence level to Certain for verified vulnerabilities
-                    self.vulnerabilities[i]['confidence'] = 'Certain'
+                    self.vulnerabilities[i]["confidence"] = "Certain"
                     self.logger.info(f"✓ Verified: {vuln_type}")
                 else:
-                    confidence = verification.get('confidence', 'low')
-                    if confidence == 'high':
+                    confidence = verification.get("confidence", "low")
+                    if confidence == "high":
                         high_confidence_count += 1
-                    self.logger.debug(f"✗ Unverified: {vuln_type} (confidence: {confidence})")
-                
+                    self.logger.debug(
+                        f"✗ Unverified: {vuln_type} (confidence: {confidence})"
+                    )
+
             except Exception as e:
                 self.logger.error(f"Verification failed for {vuln_type}: {str(e)}")
-                self.vulnerabilities[i]['verification'] = {
-                    'verified': False,
-                    'confidence': 'unknown',
-                    'error': str(e),
-                    'method': 'failed'
+                self.vulnerabilities[i]["verification"] = {
+                    "verified": False,
+                    "confidence": "unknown",
+                    "error": str(e),
+                    "method": "failed",
                 }
-        
+
         # Calculate verification statistics
         total_vulns = len(self.vulnerabilities)
-        verification_rate = (verified_count / total_vulns * 100) if total_vulns > 0 else 0.0
-        
+        verification_rate = (
+            (verified_count / total_vulns * 100) if total_vulns > 0 else 0.0
+        )
+
         verification_summary = {
-            'total_vulnerabilities': total_vulns,
-            'verified_vulnerabilities': verified_count,
-            'high_confidence_verifications': high_confidence_count,
-            'verification_rate': round(verification_rate, 2)
+            "total_vulnerabilities": total_vulns,
+            "verified_vulnerabilities": verified_count,
+            "high_confidence_verifications": high_confidence_count,
+            "verification_rate": round(verification_rate, 2),
         }
-        
+
         self.logger.info(
             f"Verification complete: {verified_count}/{total_vulns} verified "
             f"({verification_rate:.2f}% verification rate)"
         )
-        
+
         return verification_summary

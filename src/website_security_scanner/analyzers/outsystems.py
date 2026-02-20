@@ -13,28 +13,30 @@ Author: Bachelor Thesis Project - Low-Code Platforms Security Analysis
 import re
 import secrets
 from typing import Any, Dict, List
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 
-from .base import BaseAnalyzer
+from ..utils.evidence_builder import EvidenceBuilder
 from .advanced_checks import AdvancedChecksMixin
+from .base import BaseAnalyzer
 from .common_web_checks import CommonWebChecksMixin
 from .verification_metadata_mixin import VerificationMetadataMixin
 from .vulnerability_detection import (
-    XSSDetector,
-    SQLInjectionDetector,
     CSRFDetector,
     OpenRedirectDetector,
+    SQLInjectionDetector,
+    XSSDetector,
 )
-from ..utils.evidence_builder import EvidenceBuilder
 
 
-class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMetadataMixin, BaseAnalyzer):
+class OutSystemsAnalyzer(
+    CommonWebChecksMixin, AdvancedChecksMixin, VerificationMetadataMixin, BaseAnalyzer
+):
     """
     Specialized analyzer for OutSystems applications.
-    
+
     Provides comprehensive security analysis for OutSystems low-code applications,
     detecting REST API exposures, screen action vulnerabilities, entity leaks,
     and role-based access control misconfigurations.
@@ -43,7 +45,7 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
     def __init__(self, session: requests.Session):
         """
         Initialize OutSystems analyzer.
-        
+
         Args:
             session: Configured requests session for HTTP operations
         """
@@ -51,7 +53,7 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
         self.rest_apis: List[str] = []
         self.screen_actions: List[Dict[str, Any]] = []
         self.entities: List[Dict[str, Any]] = []
-        
+
         # Initialize vulnerability detectors
         self.xss_detector = XSSDetector(session)
         self.sqli_detector = SQLInjectionDetector(session)
@@ -63,16 +65,16 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
     ) -> Dict[str, Any]:
         """
         Comprehensive OutSystems security analysis.
-        
+
         Args:
             url: Target URL being analyzed
             response: HTTP response from target
             soup: Parsed BeautifulSoup object
-            
+
         Returns:
             Dictionary containing analysis results and vulnerabilities
         """
-        
+
         # Record HTTP context for enriched vulnerability reporting
         self._record_http_context(url, response)
 
@@ -84,6 +86,9 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
 
         # Analyze screen actions
         self._analyze_screen_actions(js_content)
+
+        # Analyze for exposed service actions
+        self._analyze_service_actions(soup, url)
 
         # Check for entity exposure
         self._analyze_entities(js_content)
@@ -164,8 +169,8 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
         for vuln in xss_vulns:
             evidence = f"Parameter: {vuln['parameter']}, Context: {vuln['context']}"
             self.add_enriched_vulnerability(
-                vuln['type'],
-                vuln['severity'],
+                vuln["type"],
+                vuln["severity"],
                 f"{vuln['type']} detected in parameter '{vuln['parameter']}'",
                 evidence,
                 "Implement output encoding, input validation, and Content Security Policy",
@@ -177,11 +182,11 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                 references=[
                     "https://owasp.org/www-community/attacks/xss/",
                     "https://cwe.mitre.org/data/definitions/79.html",
-                    "https://portswigger.net/web-security/cross-site-scripting"
+                    "https://portswigger.net/web-security/cross-site-scripting",
                 ],
-                parameter=vuln.get('parameter', ''),
-                url=vuln.get('url', url),
-                http_response=vuln.get('response')
+                parameter=vuln.get("parameter", ""),
+                url=vuln.get("url", url),
+                http_response=vuln.get("response"),
             )
 
         # DOM-based XSS Detection
@@ -189,8 +194,8 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
         for vuln in dom_xss_vulns:
             evidence = f"Source: {vuln['source']}, Sink: {vuln['sink']}"
             self.add_enriched_vulnerability(
-                vuln['type'],
-                vuln['severity'],
+                vuln["type"],
+                vuln["severity"],
                 f"{vuln['type']} detected via DOM manipulation",
                 evidence,
                 "Avoid using dangerous DOM sinks with user-controlled data; use safe DOM APIs and validate input",
@@ -201,21 +206,21 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                 impact="DOM-based XSS is particularly dangerous as it bypasses server-side protections. Attackers can execute arbitrary JavaScript in the victim's browser context.",
                 references=[
                     "https://owasp.org/www-community/attacks/DOM_Based_XSS",
-                    "https://portswigger.net/web-security/cross-site-scripting/dom-based"
+                    "https://portswigger.net/web-security/cross-site-scripting/dom-based",
                 ],
-                parameter=vuln.get('parameter', ''),
-                url=vuln.get('url', url),
-                http_response=vuln.get('response')
+                parameter=vuln.get("parameter", ""),
+                url=vuln.get("url", url),
+                http_response=vuln.get("response"),
             )
 
         # SQL Injection Detection
         sqli_vulns = self.sqli_detector.detect_sql_injection(url, response)
         for vuln in sqli_vulns:
-            if vuln['type'] == 'SQL Injection':
+            if vuln["type"] == "SQL Injection":
                 evidence = f"Parameter: {vuln.get('parameter', 'unknown')}"
                 self.add_enriched_vulnerability(
-                    vuln['type'],
-                    vuln['severity'],
+                    vuln["type"],
+                    vuln["severity"],
                     f"{vuln['type']} vulnerability detected in parameter '{vuln.get('parameter', 'unknown')}'",
                     evidence,
                     "Use parameterized queries, prepared statements, and input validation. Never concatenate user input into SQL queries.",
@@ -227,16 +232,16 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                     references=[
                         "https://owasp.org/www-community/attacks/SQL_Injection",
                         "https://cwe.mitre.org/data/definitions/89.html",
-                        "https://portswigger.net/web-security/sql-injection"
+                        "https://portswigger.net/web-security/sql-injection",
                     ],
-                    parameter=vuln.get('parameter', ''),
-                    url=vuln.get('url', url),
-                    http_response=vuln.get('response')
+                    parameter=vuln.get("parameter", ""),
+                    url=vuln.get("url", url),
+                    http_response=vuln.get("response"),
                 )
-            elif vuln['type'] == 'SQL Error Disclosure':
+            elif vuln["type"] == "SQL Error Disclosure":
                 self.add_enriched_vulnerability(
-                    vuln['type'],
-                    vuln['severity'],
+                    vuln["type"],
+                    vuln["severity"],
                     "Database error messages are being disclosed to users",
                     "SQL error patterns found in response",
                     "Configure database error handling to display generic messages to users. Log detailed errors server-side.",
@@ -247,20 +252,20 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                     impact="SQL error disclosure assists attackers in crafting more precise SQL injection attacks and understanding the database schema.",
                     references=[
                         "https://cwe.mitre.org/data/definitions/209.html",
-                        "https://owasp.org/www-project-web-security-testing-guide/"
+                        "https://owasp.org/www-project-web-security-testing-guide/",
                     ],
-                    url=vuln.get('url', url),
-                    http_response=vuln.get('response')
+                    url=vuln.get("url", url),
+                    http_response=vuln.get("response"),
                 )
 
         # CSRF Detection
         csrf_vulns = self.csrf_detector.detect_csrf(url, response, soup)
         for vuln in csrf_vulns:
-            if vuln['type'] == 'Cross-Site Request Forgery (CSRF)':
+            if vuln["type"] == "Cross-Site Request Forgery (CSRF)":
                 evidence = f"Form: {vuln['form_method']} {vuln['form_action']}, Missing: {vuln['missing_protection']}"
                 self.add_enriched_vulnerability(
-                    vuln['type'],
-                    vuln['severity'],
+                    vuln["type"],
+                    vuln["severity"],
                     f"{vuln['type']} vulnerability in form {vuln['form_index']}",
                     evidence,
                     "Implement anti-CSRF tokens in all state-changing forms. Verify SameSite cookie attributes. Use CSRF protection headers.",
@@ -272,16 +277,16 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                     references=[
                         "https://owasp.org/www-community/attacks/csrf",
                         "https://cwe.mitre.org/data/definitions/352.html",
-                        "https://portswigger.net/web-security/csrf"
+                        "https://portswigger.net/web-security/csrf",
                     ],
-                    url=vuln.get('url', url),
-                    http_response=vuln.get('response')
+                    url=vuln.get("url", url),
+                    http_response=vuln.get("response"),
                 )
-            elif vuln['type'] == 'Weak CSRF Protection':
+            elif vuln["type"] == "Weak CSRF Protection":
                 evidence = f"Form: {vuln['form_method']} {vuln['form_action']}, Issue: {vuln['issue']}"
                 self.add_enriched_vulnerability(
-                    vuln['type'],
-                    vuln['severity'],
+                    vuln["type"],
+                    vuln["severity"],
                     f"{vuln['type']} in form {vuln['form_index']}",
                     evidence,
                     "Implement SameSite=Strict or SameSite=Lax cookies. Use double-submit cookie pattern or custom CSRF tokens.",
@@ -292,16 +297,16 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                     impact="Weak CSRF protection can still allow attackers to perform unauthorized actions on behalf of authenticated users.",
                     references=[
                         "https://owasp.org/www-community/attacks/csrf",
-                        "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite"
+                        "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite",
                     ],
-                    url=vuln.get('url', url),
-                    http_response=vuln.get('response')
+                    url=vuln.get("url", url),
+                    http_response=vuln.get("response"),
                 )
-            elif vuln['type'] == 'API CSRF Vulnerability':
+            elif vuln["type"] == "API CSRF Vulnerability":
                 evidence = f"Method: {vuln['method']}, Issue: {vuln['issue']}"
                 self.add_enriched_vulnerability(
-                    vuln['type'],
-                    vuln['severity'],
+                    vuln["type"],
+                    vuln["severity"],
                     f"{vuln['type']} in API endpoint",
                     evidence,
                     "Implement CSRF tokens, verify Origin/Referer headers, or use custom headers like X-Requested-With for state-changing API calls.",
@@ -313,18 +318,20 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                     references=[
                         "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html"
                     ],
-                    url=vuln.get('url', url),
-                    http_response=vuln.get('response')
+                    url=vuln.get("url", url),
+                    http_response=vuln.get("response"),
                 )
 
         # Open Redirect Detection
-        redirect_vulns = self.redirect_detector.detect_open_redirect(url, response, soup)
+        redirect_vulns = self.redirect_detector.detect_open_redirect(
+            url, response, soup
+        )
         for vuln in redirect_vulns:
-            if vuln['type'] == 'Open Redirect':
+            if vuln["type"] == "Open Redirect":
                 evidence = f"Parameter: {vuln['parameter']}"
                 self.add_enriched_vulnerability(
-                    vuln['type'],
-                    vuln['severity'],
+                    vuln["type"],
+                    vuln["severity"],
                     f"{vuln['type']} vulnerability detected in parameter '{vuln['parameter']}'",
                     evidence,
                     "Validate and whitelist redirect URLs. Use relative URLs where possible. Avoid using user input for redirect destinations.",
@@ -335,16 +342,16 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                     impact="Attackers can redirect users to phishing sites, malware distribution, or malicious content, bypassing URL filtering and trust indicators.",
                     references=[
                         "https://cwe.mitre.org/data/definitions/601.html",
-                        "https://owasp.org/www-project-web-security-testing-guide/"
+                        "https://owasp.org/www-project-web-security-testing-guide/",
                     ],
-                    parameter=vuln.get('parameter', ''),
-                    url=vuln.get('url', url),
-                    http_response=vuln.get('response')
+                    parameter=vuln.get("parameter", ""),
+                    url=vuln.get("url", url),
+                    http_response=vuln.get("response"),
                 )
-            elif vuln['type'] == 'Open Redirect via Meta Refresh':
+            elif vuln["type"] == "Open Redirect via Meta Refresh":
                 self.add_enriched_vulnerability(
-                    vuln['type'],
-                    vuln['severity'],
+                    vuln["type"],
+                    vuln["severity"],
                     "Open redirect via meta refresh tag detected",
                     "Meta refresh with user-controlled URL parameter",
                     "Validate redirect URLs before using them in meta refresh tags. Use server-side redirects with proper validation.",
@@ -353,16 +360,14 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                     cwe=["CWE-601"],
                     background="Meta refresh tags can be abused for open redirect attacks if they incorporate user-controlled input.",
                     impact="Similar to standard open redirects, this can be used for phishing and malware distribution.",
-                    references=[
-                        "https://cwe.mitre.org/data/definitions/601.html"
-                    ],
-                    url=vuln.get('url', url),
-                    http_response=vuln.get('response')
+                    references=["https://cwe.mitre.org/data/definitions/601.html"],
+                    url=vuln.get("url", url),
+                    http_response=vuln.get("response"),
                 )
-            elif vuln['type'] == 'Potential Open Redirect via JavaScript':
+            elif vuln["type"] == "Potential Open Redirect via JavaScript":
                 self.add_enriched_vulnerability(
-                    vuln['type'],
-                    vuln['severity'],
+                    vuln["type"],
+                    vuln["severity"],
                     "Potential open redirect via JavaScript detected",
                     "JavaScript redirect code with user input",
                     "Review JavaScript redirect code to ensure URLs are validated and sanitized before use.",
@@ -371,11 +376,9 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                     cwe=["CWE-601"],
                     background="JavaScript-based redirects can be exploited for phishing if they incorporate user-controlled input without validation.",
                     impact="Attackers can craft malicious URLs that redirect victims to phishing sites or malicious content.",
-                    references=[
-                        "https://cwe.mitre.org/data/definitions/601.html"
-                    ],
-                    url=vuln.get('url', url),
-                    http_response=vuln.get('response')
+                    references=["https://cwe.mitre.org/data/definitions/601.html"],
+                    url=vuln.get("url", url),
+                    http_response=vuln.get("response"),
                 )
 
         return {
@@ -406,29 +409,41 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
         ]
 
         for pattern in rest_patterns:
-            matches = re.findall(pattern, js_content, re.IGNORECASE)
-            for match in matches:
-                self.rest_apis.append(match)
+            try:
+                matches = re.findall(pattern, js_content, re.IGNORECASE)
+                for match in matches:
+                    self.rest_apis.append(match)
 
-                # Check for sensitive API names
-                if any(
-                    sensitive in match.lower()
-                    for sensitive in ["admin", "internal", "private", "secret"]
-                ):
-                    api_evidence = EvidenceBuilder.regex_pattern(
-                        rf"(?i){re.escape(match)}",
-                        f"Sensitive REST API endpoint: {match}"
-                    )
-                    self.add_enriched_vulnerability(
-                        "Sensitive REST API Exposure",
-                        "High",
-                        f"Potentially sensitive REST API exposed: {match}",
-                        api_evidence,
-                        "Review API permissions and authentication requirements",
-                        category="API Security",
-                        owasp="A01:2021 - Broken Access Control",
-                        cwe=["CWE-284", "CWE-862"]
-                    )
+                    # Check for sensitive API names
+                    if any(
+                        sensitive in match.lower()
+                        for sensitive in ["admin", "internal", "private", "secret"]
+                    ):
+                        api_evidence = EvidenceBuilder.regex_pattern(
+                            rf"(?i){re.escape(match)}",
+                            f"Sensitive REST API endpoint: {match}",
+                        )
+                        self.add_enriched_vulnerability(
+                            "Sensitive REST API Exposure",
+                            "High",
+                            f"Potentially sensitive REST API exposed: {match}",
+                            api_evidence,
+                            "Review API permissions and authentication requirements",
+                            category="API Security",
+                            owasp="A01:2021 - Broken Access Control",
+                            cwe=["CWE-284", "CWE-862"],
+                            background="Exposing sensitive API endpoints in client-side code can allow attackers to discover and potentially exploit internal functionality.",
+                            impact="Unauthorized access to sensitive API endpoints can lead to data breaches, privilege escalation, and system compromise.",
+                            references=[
+                                "https://owasp.org/www-project-api-security/",
+                                "https://cwe.mitre.org/data/definitions/284.html",
+                            ],
+                        )
+            except Exception as e:
+                self.logger.debug(
+                    f"Error analyzing REST APIs with pattern {pattern}: {e}"
+                )
+                continue
 
     def _analyze_screen_actions(self, js_content: str):
         """Analyze OutSystems screen actions"""
@@ -440,29 +455,41 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
         ]
 
         for pattern in action_patterns:
-            matches = re.findall(pattern, js_content, re.IGNORECASE)
-            for match in matches:
-                self.screen_actions.append(match)
+            try:
+                matches = re.findall(pattern, js_content, re.IGNORECASE)
+                for match in matches:
+                    self.screen_actions.append(match)
 
-                # Check for privileged actions
-                if any(
-                    priv in match.lower()
-                    for priv in ["delete", "admin", "elevate", "privilege"]
-                ):
-                    action_evidence = EvidenceBuilder.regex_pattern(
-                        rf"(?i){re.escape(match)}",
-                        f"Privileged screen action: {match}"
-                    )
-                    self.add_enriched_vulnerability(
-                        "Privileged Action Exposure",
-                        "Medium",
-                        f"Privileged screen action found: {match}",
-                        action_evidence,
-                        "Ensure proper authorization checks for privileged actions",
-                        category="Business Logic",
-                        owasp="A01:2021 - Broken Access Control",
-                        cwe=["CWE-284"]
-                    )
+                    # Check for privileged actions
+                    if any(
+                        priv in match.lower()
+                        for priv in ["delete", "admin", "elevate", "privilege"]
+                    ):
+                        action_evidence = EvidenceBuilder.regex_pattern(
+                            rf"(?i){re.escape(match)}",
+                            f"Privileged screen action: {match}",
+                        )
+                        self.add_enriched_vulnerability(
+                            "Privileged Action Exposure",
+                            "Medium",
+                            f"Privileged screen action found: {match}",
+                            action_evidence,
+                            "Ensure proper authorization checks for privileged actions",
+                            category="Business Logic",
+                            owasp="A01:2021 - Broken Access Control",
+                            cwe=["CWE-284"],
+                            background="Exposing privileged actions in client-side code without proper authorization checks can allow attackers to bypass security controls.",
+                            impact="Unauthorized execution of privileged actions can lead to data manipulation, privilege escalation, and system compromise.",
+                            references=[
+                                "https://owasp.org/www-project-top-ten/2017/A5_2017-Broken_Access_Control",
+                                "https://cwe.mitre.org/data/definitions/284.html",
+                            ],
+                        )
+            except Exception as e:
+                self.logger.debug(
+                    f"Error analyzing screen actions with pattern {pattern}: {e}"
+                )
+                continue
 
     def _analyze_entities(self, js_content: str):
         """Check for OutSystems entity exposure"""
@@ -474,25 +501,37 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
         ]
 
         for pattern in entity_patterns:
-            matches = re.findall(pattern, js_content, re.IGNORECASE)
-            for match in matches:
-                self.entities.append(match)
+            try:
+                matches = re.findall(pattern, js_content, re.IGNORECASE)
+                for match in matches:
+                    self.entities.append(match)
 
-                # Check for sensitive entity names
-                if any(
-                    sensitive in match.lower()
-                    for sensitive in ["user", "account", "payment", "personal"]
-                ):
-                    self.add_enriched_vulnerability(
-                        "Sensitive Entity Exposure",
-                        "Medium",
-                        f"Sensitive entity structure exposed: {match}",
-                        match,
-                        "Review entity permissions and data access rules",
-                        category="Data Exposure",
-                        owasp="A04:2021 - Insecure Design",
-                        cwe=["CWE-200"]
-                    )
+                    # Check for sensitive entity names
+                    if any(
+                        sensitive in match.lower()
+                        for sensitive in ["user", "account", "payment", "personal"]
+                    ):
+                        self.add_enriched_vulnerability(
+                            "Sensitive Entity Exposure",
+                            "Medium",
+                            f"Sensitive entity structure exposed: {match}",
+                            match,
+                            "Review entity permissions and data access rules",
+                            category="Data Exposure",
+                            owasp="A04:2021 - Insecure Design",
+                            cwe=["CWE-200"],
+                            background="Exposing sensitive entity structures in client-side code can reveal database schema and data relationships to attackers.",
+                            impact="Information disclosure about database structure can aid attackers in crafting targeted attacks and understanding data relationships.",
+                            references=[
+                                "https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure",
+                                "https://cwe.mitre.org/data/definitions/200.html",
+                            ],
+                        )
+            except Exception as e:
+                self.logger.debug(
+                    f"Error analyzing entities with pattern {pattern}: {e}"
+                )
+                continue
 
     def _analyze_session_management(self, js_content: str):
         """Analyze session management implementation"""
@@ -505,15 +544,19 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
 
         session_found = False
         for pattern in session_patterns:
-            matches = re.findall(pattern, js_content, re.IGNORECASE)
-            if matches:
-                session_found = True
-                break
+            try:
+                matches = re.findall(pattern, js_content, re.IGNORECASE)
+                if matches:
+                    session_found = True
+                    break
+            except Exception as e:
+                self.logger.debug(f"Error checking session pattern {pattern}: {e}")
+                continue
 
         if not session_found:
             session_evidence = EvidenceBuilder.exact_match(
                 "Session management patterns not found in JavaScript",
-                "Missing session management implementation"
+                "Missing session management implementation",
             )
             self.add_enriched_vulnerability(
                 "Session Management Issues",
@@ -523,7 +566,13 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                 "Implement secure session management with proper timeout and validation",
                 category="Session Management",
                 owasp="A07:2021 - Identification and Authentication Failures",
-                cwe=["CWE-287", "CWE-307"]
+                cwe=["CWE-287", "CWE-307"],
+                background="Proper session management is critical for maintaining user authentication state and preventing session-based attacks.",
+                impact="Weak or missing session management can lead to session hijacking, fixation, and unauthorized access.",
+                references=[
+                    "https://owasp.org/www-project-top-ten/2017/A2_2017-Broken_Authentication",
+                    "https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html",
+                ],
             )
 
     def _analyze_roles(self, js_content: str):
@@ -537,8 +586,12 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
 
         roles_found = 0
         for pattern in role_patterns:
-            matches = re.findall(pattern, js_content, re.IGNORECASE)
-            roles_found += len(matches)
+            try:
+                matches = re.findall(pattern, js_content, re.IGNORECASE)
+                roles_found += len(matches)
+            except Exception as e:
+                self.logger.debug(f"Error checking role pattern {pattern}: {e}")
+                continue
 
         if roles_found == 0:
             self.add_enriched_vulnerability(
@@ -549,14 +602,42 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                 "Implement comprehensive role-based access control",
                 category="Access Control",
                 owasp="A01:2021 - Broken Access Control",
-                cwe=["CWE-284"]
+                cwe=["CWE-284"],
+                background="Role-based access control (RBAC) is essential for enforcing authorization policies and preventing unauthorized access to functionality.",
+                impact="Missing RBAC can allow users to access functionality beyond their authorization level, leading to privilege escalation and data breaches.",
+                references=[
+                    "https://owasp.org/www-project-top-ten/2017/A5_2017-Broken_Access_Control",
+                    "https://cwe.mitre.org/data/definitions/284.html",
+                ],
             )
+
+    def _analyze_service_actions(self, soup: BeautifulSoup, url: str):
+        """Analyze for exposed OutSystems service actions (SOAP)."""
+        for tag in soup.find_all("a", href=True):
+            href = tag["href"]
+            if href.lower().endswith(".asmx"):
+                service_url = urljoin(url, href)
+                self.add_enriched_vulnerability(
+                    "Exposed Service Action (SOAP)",
+                    "Medium",
+                    f"An exposed SOAP service action was found: {service_url}",
+                    f"Service URL: {service_url}",
+                    "Ensure that exposed service actions have proper authentication and authorization controls. Do not expose internal services publicly.",
+                    category="API Security",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-284"],
+                    url=service_url,
+                )
 
     def _check_session_tokens_in_url(self, url: str):
         return CommonWebChecksMixin._check_session_tokens_in_url(self, url)
 
-    def _check_secrets_in_javascript(self, js_content: str, url: str, soup: BeautifulSoup = None):
-        return CommonWebChecksMixin._check_secrets_in_javascript(self, js_content, url, soup)
+    def _check_secrets_in_javascript(
+        self, js_content: str, url: str, soup: BeautifulSoup = None
+    ):
+        return CommonWebChecksMixin._check_secrets_in_javascript(
+            self, js_content, url, soup
+        )
 
     def _check_cookie_security(self, response: requests.Response):
         return CommonWebChecksMixin._check_cookie_security(self, response)
@@ -567,15 +648,19 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
     def _check_clickjacking(self, response: requests.Response):
         return CommonWebChecksMixin._check_clickjacking(self, response)
 
-    def _check_information_disclosure(self, js_content: str, html_content: str, response: requests.Response):
-        return CommonWebChecksMixin._check_information_disclosure(self, js_content, html_content, response)
+    def _check_information_disclosure(
+        self, js_content: str, html_content: str, response: requests.Response
+    ):
+        return CommonWebChecksMixin._check_information_disclosure(
+            self, js_content, html_content, response
+        )
 
     def _check_security_headers_informational(self, response: requests.Response):
         """Check for security headers with Informational severity as per Burp report"""
         headers_to_check = [
             ("Referrer-Policy", "Low"),
             ("Permissions-Policy", "Info"),
-            ("X-Permitted-Cross-Domain-Policies", "Info")
+            ("X-Permitted-Cross-Domain-Policies", "Info"),
         ]
 
         for header, severity in headers_to_check:
@@ -588,11 +673,15 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                     f"Implement the {header} header to enhance security.",
                     category="Security Headers",
                     owasp="A05:2021 - Security Misconfiguration",
-                    cwe=["CWE-16"]
+                    cwe=["CWE-16"],
                 )
 
-    def _check_reflected_input(self, url: str, response: requests.Response, html_content: str):
-        return CommonWebChecksMixin._check_reflected_input(self, url, response, html_content)
+    def _check_reflected_input(
+        self, url: str, response: requests.Response, html_content: str
+    ):
+        return CommonWebChecksMixin._check_reflected_input(
+            self, url, response, html_content
+        )
 
     def _check_path_relative_stylesheets(self, soup: BeautifulSoup):
         """Check for path-relative stylesheet imports"""
@@ -608,7 +697,7 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                     "Use absolute URLs for stylesheet imports",
                     category="Content Security Policy",
                     owasp="A05:2021 - Security Misconfiguration",
-                    cwe=["CWE-939"]
+                    cwe=["CWE-939"],
                 )
 
     def _check_cacheable_https(self, response: requests.Response, url: str):
@@ -625,16 +714,21 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
 
         test_host = f"evil-{secrets.token_hex(4)}.com"
         headers = {
-            'Host': test_host,
-            'X-Forwarded-Host': test_host,
-            'X-Forwarded-For': '1.2.3.4',
-            'Forwarded': f'for=1.2.3.4;host={test_host};proto=https'
+            "Host": test_host,
+            "X-Forwarded-Host": test_host,
+            "X-Forwarded-For": "1.2.3.4",
+            "Forwarded": f"for=1.2.3.4;host={test_host};proto=https",
         }
 
         try:
             # Test X-Forwarded-Host injection
-            resp = self.session.get(url, headers={'X-Forwarded-Host': test_host}, timeout=5, allow_redirects=False)
-            if test_host in resp.text or test_host in resp.headers.get('Location', ''):
+            resp = self.session.get(
+                url,
+                headers={"X-Forwarded-Host": test_host},
+                timeout=5,
+                allow_redirects=False,
+            )
+            if test_host in resp.text or test_host in resp.headers.get("Location", ""):
                 self.add_enriched_vulnerability(
                     "Host Header Injection (X-Forwarded-Host)",
                     "Medium",
@@ -646,7 +740,9 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                     cwe=["CWE-644"],
                     background="Host header injection occurs when an application incorrectly handles the Host header or related headers like X-Forwarded-Host. Attackers can use this to manipulate links generated by the application.",
                     impact="Can lead to web cache poisoning, password reset poisoning, and redirection to malicious sites.",
-                    references=["https://portswigger.net/web-security/host-header-injection"],
+                    references=[
+                        "https://portswigger.net/web-security/host-header-injection"
+                    ],
                     http_response=resp,
                 )
         except Exception:
@@ -654,7 +750,7 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
 
     def _check_missing_content_type(self, response: requests.Response):
         """Check for missing Content-Type header"""
-        if 'Content-Type' not in response.headers:
+        if "Content-Type" not in response.headers:
             self.add_enriched_vulnerability(
                 "Missing Content-Type Header",
                 "Medium",
@@ -663,22 +759,24 @@ class OutSystemsAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, Verification
                 "Ensure all responses include an appropriate Content-Type header to prevent MIME-type sniffing attacks.",
                 category="Security Headers",
                 owasp="A05:2021 - Security Misconfiguration",
-                cwe=["CWE-436"]
+                cwe=["CWE-436"],
             )
 
     def _check_x_content_type_options(self, response: requests.Response):
         """Check for missing X-Content-Type-Options header"""
-        if response.headers.get('X-Content-Type-Options', '').lower() != 'nosniff':
+        if response.headers.get("X-Content-Type-Options", "").lower() != "nosniff":
             self.add_enriched_vulnerability(
                 "X-Content-Type-Options Header Missing",
                 "Low",
                 "X-Content-Type-Options: nosniff header is missing or incorrectly configured",
-                response.headers.get('X-Content-Type-Options', 'Missing'),
+                response.headers.get("X-Content-Type-Options", "Missing"),
                 "Add 'X-Content-Type-Options: nosniff' header to all responses.",
                 category="Security Headers",
                 owasp="A05:2021 - Security Misconfiguration",
                 cwe=["CWE-16"],
                 background="The X-Content-Type-Options response HTTP header is a marker used by the server to indicate that the MIME types advertised in the Content-Type headers should be followed and not be changed.",
                 impact="MIME-sniffing can lead to security vulnerabilities where a browser interprets a response in a different way than intended, potentially leading to XSS.",
-                references=["https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Content-Type-Options"]
+                references=[
+                    "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Content-Type-Options"
+                ],
             )

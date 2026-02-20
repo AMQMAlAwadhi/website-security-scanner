@@ -59,14 +59,19 @@ class AdvancedPlatformDetector:
                     r'osVisitor',
                     r'osVisit',
                     r'id=[\'"]OutSystemsUI_',
-                    r'OutSystems\.Web\.JavaScript'
+                    r'OutSystems\.Web\.JavaScript',
+                    r'outsystems\.app',
+                    r'personal-.*\.outsystems\.app',
+                    r'outsystems.*cloud',
+                    r'OutSystems.*Framework'
                 ],
                 'script_patterns': [
                     r'outsystems.*\.js',
                     r'RichWidgets.*\.js',
                     r'Screen\.aspx.*\.js',
                     r'_osjs.*\.js',
-                    r'OutSystemsUI.*\.js'
+                    r'OutSystemsUI.*\.js',
+                    r'outsystems\.app.*\.js'
                 ],
                 'meta_patterns': [
                     r'generator.*outsystems',
@@ -266,6 +271,16 @@ class AdvancedPlatformDetector:
             if inferred_hint:
                 detection_result['platform_hint'] = inferred_hint
                 platform_hint = inferred_hint
+        
+        # Direct URL-based detection for high-confidence patterns
+        url_lower = url.lower()
+        if 'outsystems.app' in url_lower:
+            # Direct detection for OutSystems URLs
+            detection_result['detected_platforms'] = ['outsystems']
+            detection_result['confidence_scores'] = {'outsystems': 80}
+            detection_result['evidence'] = {'outsystems': ['URL contains outsystems.app']}
+            detection_result['method'] = 'url_pattern'
+            return detection_result
         
         try:
             # Fetch the page
@@ -533,7 +548,7 @@ class AdvancedPlatformDetector:
         return results
     
     # Minimum confidence threshold for platform detection (percentage)
-    MIN_CONFIDENCE_THRESHOLD = 25
+    MIN_CONFIDENCE_THRESHOLD = 15
     
     # High confidence threshold for automatic selection
     HIGH_CONFIDENCE_THRESHOLD = 70

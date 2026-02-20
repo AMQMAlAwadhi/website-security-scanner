@@ -14,7 +14,6 @@ import requests
 from bs4 import BeautifulSoup
 
 from ..utils.evidence_builder import EvidenceBuilder
-from ..utils.secret_detector import SecretDetector
 
 
 class CommonWebChecksMixin:
@@ -44,7 +43,10 @@ class CommonWebChecksMixin:
         except Exception:
             return False
 
-    def _get_secret_detector(self) -> SecretDetector:
+    def _get_secret_detector(self) -> "SecretDetector":
+        """Get or create a shared SecretDetector instance."""
+        from ..utils.secret_detector import SecretDetector
+
         if not hasattr(self, "_secret_detector"):
             self._secret_detector = SecretDetector()
         return self._secret_detector
@@ -110,7 +112,11 @@ class CommonWebChecksMixin:
             if resp.status_code != 200:
                 continue
             content_type = resp.headers.get("Content-Type", "").lower()
-            if content_type and "javascript" not in content_type and "ecmascript" not in content_type:
+            if (
+                content_type
+                and "javascript" not in content_type
+                and "ecmascript" not in content_type
+            ):
                 continue
             if resp.content is not None and len(resp.content) > max_bytes:
                 if hasattr(self, "_record_warning"):
@@ -125,7 +131,9 @@ class CommonWebChecksMixin:
 
     def _get_set_cookie_headers(self, response: requests.Response) -> List[str]:
         """Extract Set-Cookie headers from response."""
-        raw_headers = getattr(response.raw, "headers", None) if hasattr(response, 'raw') else None
+        raw_headers = (
+            getattr(response.raw, "headers", None) if hasattr(response, "raw") else None
+        )
         if raw_headers is not None and hasattr(raw_headers, "get_all"):
             values = raw_headers.get_all("Set-Cookie")
             return [v for v in values if v]
@@ -136,66 +144,74 @@ class CommonWebChecksMixin:
 
         return [value]
 
-    def _is_bubble_workflow_session(self, url: str, param_name: str, param_value: str) -> bool:
+    def _is_bubble_workflow_session(
+        self, url: str, param_name: str, param_value: str
+    ) -> bool:
         """
         Check if a URL parameter is a Bubble workflow session (false positive).
-        
+
         Bubble.io uses session-like parameters in workflow URLs that are not
         actual authentication sessions.
-        
+
         Args:
             url: Full URL
             param_name: Name of the parameter
             param_value: Value of the parameter
-            
+
         Returns:
             True if this is a Bubble workflow parameter (false positive)
         """
         # Bubble-specific patterns that indicate workflow parameters
         bubble_indicators = [
-            r'bubbleapps\.io',
-            r'bubble\.io',
-            r'api/1\.1/wf/',
-            r'version-\w+/api/',
-            r'\.bubble\.'
+            r"bubbleapps\.io",
+            r"bubble\.io",
+            r"api/1\.1/wf/",
+            r"version-\w+/api/",
+            r"\.bubble\.",
         ]
-        
-        is_bubble_url = any(re.search(pattern, url, re.IGNORECASE) for pattern in bubble_indicators)
-        
+
+        is_bubble_url = any(
+            re.search(pattern, url, re.IGNORECASE) for pattern in bubble_indicators
+        )
+
         if not is_bubble_url:
             return False
-        
+
         # Bubble workflow parameters that are NOT authentication sessions
         bubble_workflow_params = [
-            'workflow_session',
-            'wf_session',
-            'bubble_session',
-            'instance_session',
-            'test_session',
-            'preview_session',
+            "workflow_session",
+            "wf_session",
+            "bubble_session",
+            "instance_session",
+            "test_session",
+            "preview_session",
         ]
-        
+
         # Check if parameter name matches known Bubble workflow patterns
         param_lower = param_name.lower()
         if any(bp in param_lower for bp in bubble_workflow_params):
             return True
-        
+
         # Check for Bubble-specific value patterns (UUID-like but not real sessions)
-        if param_name.lower() in ['session', 'token']:
+        if param_name.lower() in ["session", "token"]:
             # Bubble workflow values are often UUIDs or contain specific patterns
-            if re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', param_value, re.I):
+            if re.match(
+                r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                param_value,
+                re.I,
+            ):
                 # This is likely a Bubble workflow ID, not a user session
                 return True
             # Bubble test/preview sessions often have specific prefixes
-            if re.match(r'^(test_|preview_|debug_|wf_)', param_value, re.I):
+            if re.match(r"^(test_|preview_|debug_|wf_)", param_value, re.I):
                 return True
-        
+
         return False
 
     def _check_session_tokens_in_url(self, url: str, is_bubble_context: bool = False):
         """
         Check for session tokens in URL with platform-specific filtering.
-        
+
         Args:
             url: URL to check
             is_bubble_context: Whether this is a Bubble.io application
@@ -218,11 +234,15 @@ class CommonWebChecksMixin:
         found_params = []
         parsed = urlparse(url)
         query_params = parse_qs(parsed.query)
-        
+
         for param in session_params:
             if re.search(rf"[?&]{param}=", url, re.IGNORECASE):
                 # Check for false positives in Bubble contexts
-                if is_bubble_context or self._is_bubble_workflow_session(url, param, query_params.get(param, [''])[0] if param in query_params else ''):
+                if is_bubble_context or self._is_bubble_workflow_session(
+                    url,
+                    param,
+                    query_params.get(param, [""])[0] if param in query_params else "",
+                ):
                     # Additional validation: check if this is a real authentication token
                     values = query_params.get(param, [])
                     if values:
@@ -234,9 +254,11 @@ class CommonWebChecksMixin:
                         if len(value) < 16:
                             continue
                         # Skip obvious placeholder/test values
-                        if re.match(r'^(test|example|demo|sample|xxx|yyy|abc123)', value, re.I):
+                        if re.match(
+                            r"^(test|example|demo|sample|xxx|yyy|abc123)", value, re.I
+                        ):
                             continue
-                
+
                 found_params.append(param)
 
         if not found_params:
@@ -272,7 +294,9 @@ class CommonWebChecksMixin:
             ("inline", js_content or "", None)
         ]
         if fetch_external:
-            content_sources.extend(self._fetch_external_javascript(soup, url, limit=max_assets))
+            content_sources.extend(
+                self._fetch_external_javascript(soup, url, limit=max_assets)
+            )
 
         reported = set()
         for source, content, response in content_sources:
@@ -379,7 +403,7 @@ class CommonWebChecksMixin:
                     confidence="Tentative",
                     category="Session Management",
                     owasp="A01:2021 - Broken Access Control",
-                    cwe=["CWE-1275"]
+                    cwe=["CWE-1275"],
                 )
 
     def _check_csp_policy(self, response: requests.Response):
@@ -472,7 +496,9 @@ class CommonWebChecksMixin:
                 "Information Disclosure",
                 "Low",
                 "Potential error information exposed",
-                EvidenceBuilder.regex_pattern(matches[0], "Error/debug pattern in response content"),
+                EvidenceBuilder.regex_pattern(
+                    matches[0], "Error/debug pattern in response content"
+                ),
                 "Review error handling and information disclosure",
                 confidence="Tentative",
                 category="Information Disclosure",
@@ -480,7 +506,9 @@ class CommonWebChecksMixin:
                 cwe=["CWE-200"],
             )
 
-    def _check_reflected_input(self, url: str, response: requests.Response, html_content: str):
+    def _check_reflected_input(
+        self, url: str, response: requests.Response, html_content: str
+    ):
         """Check for reflected input (potential XSS)."""
         if not self._is_html_response(response):
             return
@@ -517,7 +545,10 @@ class CommonWebChecksMixin:
         pragma = response.headers.get("Pragma", "")
         cache_control_lower = cache_control.lower()
 
-        if any(directive in cache_control_lower for directive in ["no-store", "no-cache", "private"]):
+        if any(
+            directive in cache_control_lower
+            for directive in ["no-store", "no-cache", "private"]
+        ):
             return
 
         if "no-cache" in pragma.lower():
@@ -562,8 +593,13 @@ class CommonWebChecksMixin:
                     decoded = base64.b64decode(value).decode("utf-8", errors="ignore")
                 except Exception:
                     continue
-                if decoded and any(token in decoded.lower() for token in ["password", "token", "secret", "key"]):
-                    evidence = EvidenceBuilder.exact_match(value, "Base64 data in URL parameter")
+                if decoded and any(
+                    token in decoded.lower()
+                    for token in ["password", "token", "secret", "key"]
+                ):
+                    evidence = EvidenceBuilder.exact_match(
+                        value, "Base64 data in URL parameter"
+                    )
                     self.add_enriched_vulnerability(
                         "Base64 Encoded Data in URL",
                         "Info",
@@ -605,11 +641,13 @@ class CommonWebChecksMixin:
         for pattern in insecure_action_patterns:
             matches = re.findall(pattern, combined_content, re.IGNORECASE)
             if matches:
-                findings.append({
-                    'type': 'Insecure Action Naming',
-                    'evidence': f"Pattern matched: {pattern}",
-                    'count': len(matches),
-                })
+                findings.append(
+                    {
+                        "type": "Insecure Action Naming",
+                        "evidence": f"Pattern matched: {pattern}",
+                        "count": len(matches),
+                    }
+                )
 
         # Pattern 2: Exposed internal role/permission indicators
         internal_role_patterns = [
@@ -620,11 +658,13 @@ class CommonWebChecksMixin:
         for pattern in internal_role_patterns:
             matches = re.findall(pattern, combined_content, re.IGNORECASE)
             if matches:
-                findings.append({
-                    'type': 'Exposed Internal Roles',
-                    'evidence': f"Internal role exposure detected: {pattern}",
-                    'count': len(matches),
-                })
+                findings.append(
+                    {
+                        "type": "Exposed Internal Roles",
+                        "evidence": f"Internal role exposure detected: {pattern}",
+                        "count": len(matches),
+                    }
+                )
 
         # Pattern 3: Platform-specific business logic patterns
         if platform.lower() == "bubble":
@@ -635,11 +675,13 @@ class CommonWebChecksMixin:
             for pattern in bubble_patterns:
                 matches = re.findall(pattern, combined_content, re.IGNORECASE)
                 if matches:
-                    findings.append({
-                        'type': 'Bubble Business Logic Flaw',
-                        'evidence': f"Bubble-specific pattern: {pattern}",
-                        'count': len(matches),
-                    })
+                    findings.append(
+                        {
+                            "type": "Bubble Business Logic Flaw",
+                            "evidence": f"Bubble-specific pattern: {pattern}",
+                            "count": len(matches),
+                        }
+                    )
 
         elif platform.lower() == "outsystems":
             outsystems_patterns = [
@@ -649,11 +691,13 @@ class CommonWebChecksMixin:
             for pattern in outsystems_patterns:
                 matches = re.findall(pattern, combined_content, re.IGNORECASE)
                 if matches:
-                    findings.append({
-                        'type': 'OutSystems Business Logic Flaw',
-                        'evidence': f"OutSystems-specific pattern: {pattern}",
-                        'count': len(matches),
-                    })
+                    findings.append(
+                        {
+                            "type": "OutSystems Business Logic Flaw",
+                            "evidence": f"OutSystems-specific pattern: {pattern}",
+                            "count": len(matches),
+                        }
+                    )
 
         # Report findings
         for finding in findings:
@@ -665,10 +709,10 @@ class CommonWebChecksMixin:
                 "Implement proper validation for all business-critical operations",
             ]
             self.add_enriched_vulnerability(
-                finding['type'],
+                finding["type"],
                 "Medium",
                 f"Potential business logic flaw detected: {finding['type'].lower()}",
-                finding['evidence'],
+                finding["evidence"],
                 "Review and harden business logic to prevent abuse",
                 confidence="Tentative",
                 category="Business Logic",
@@ -716,24 +760,34 @@ class CommonWebChecksMixin:
                     # Skip if value is too short (< 16 chars for real sessions)
                     if len(value) < 16:
                         # Check if it's clearly a non-sensitive identifier
-                        if re.match(r'^\d+$', value):  # Purely numeric
+                        if re.match(r"^\d+$", value):  # Purely numeric
                             continue
-                        if value.lower() in ['true', 'false', 'null', 'undefined']:
+                        if value.lower() in ["true", "false", "null", "undefined"]:
                             continue
 
                     # Skip known non-session patterns
                     if is_low_code_platform:
                         # Skip Bubble/OutSystems workflow IDs
-                        if param.lower() in ['workflow', 'wf', 'screen', 'action', 'instance']:
+                        if param.lower() in [
+                            "workflow",
+                            "wf",
+                            "screen",
+                            "action",
+                            "instance",
+                        ]:
                             continue
                         # Skip preview/test sessions
-                        if re.match(r'^(test|preview|demo|sample)', value, re.I):
+                        if re.match(r"^(test|preview|demo|sample)", value, re.I):
                             continue
 
-                    detected_sessions.append({
-                        'param': param,
-                        'value': value[:50] + '...' if len(value) > 50 else value,  # Truncate for evidence
-                    })
+                    detected_sessions.append(
+                        {
+                            "param": param,
+                            "value": value[:50] + "..."
+                            if len(value) > 50
+                            else value,  # Truncate for evidence
+                        }
+                    )
 
         if detected_sessions:
             evidence_list = []

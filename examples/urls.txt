@@ -1,0 +1,5 @@
+https://your-app.bubbleapps.io/app-name
+https://your-app.outsystems.app/your-path
+https://airtable.com/appXXXXXXXXXXXXXX/
+https://your-mern-app.onrender.com/
+

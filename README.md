@@ -100,7 +100,7 @@ http://localhost:5000
 
 3. **Start scanning**: Use the intuitive web interface to configure and run scans with real-time progress monitoring!
 
-See [docs/user_guide/WEB_FRONTEND_GUIDE.md](docs/user_guide/WEB_FRONTEND_GUIDE.md) for detailed documentation.
+See [docs/WEB_FRONTEND_GUIDE.md](docs/WEB_FRONTEND_GUIDE.md) for detailed documentation.
 
 ### Option 2: Docker (Recommended for Deployment)
 
@@ -111,7 +111,7 @@ cp .env.example .env
 
 2. **Start the stack**:
 ```bash
-docker-compose up -d
+docker-compose -f docker/docker-compose.yml up -d
 ```
 
 3. **Open in browser**:
@@ -136,19 +136,19 @@ wss \
 
 3. **Scan multiple URLs from a file**:
 ```bash
-wss --batch urls.txt --output results.json
+wss --batch examples/urls.txt --output results.json
 ```
 
 4. **Generate comparative analysis**:
 ```bash
-wss --batch urls.txt --comparative --output comparative_report.json
+wss --batch examples/urls.txt --comparative --output comparative_report.json
 ```
 
-### Example URLs File (urls.txt)
+### Example URLs File (examples/urls.txt)
 ```
-https://amqmalawadhi-85850.bubbleapps.io/version-test/
-https://personal-7hwwkk2j-dev.outsystems.app/UST/
-https://airtable.com/app5oLkwSi8gaXUod/
+https://your-app.bubbleapps.io/app-name
+https://your-app.outsystems.app/your-path
+https://airtable.com/appXXXXXXXXXXXXXX/
 ```
 
 ## Configuration
@@ -356,7 +356,7 @@ wss --batch urls.txt --comparative --format txt --output executive_summary.txt
 ## New Features Documentation
 
 ### 🌐 Web Frontend
-For comprehensive web interface documentation, see [docs/user_guide/WEB_FRONTEND_GUIDE.md](docs/user_guide/WEB_FRONTEND_GUIDE.md):
+For comprehensive web interface documentation, see [docs/WEB_FRONTEND_GUIDE.md](docs/WEB_FRONTEND_GUIDE.md):
 - Dashboard and statistics
 - Real-time scan monitoring
 - API endpoints reference
@@ -364,7 +364,7 @@ For comprehensive web interface documentation, see [docs/user_guide/WEB_FRONTEND
 - Deployment guidelines
 
 ### ✅ Vulnerability Verification
-For detailed verification documentation, see [docs/user_guide/VULNERABILITY_VERIFICATION_GUIDE.md](docs/user_guide/VULNERABILITY_VERIFICATION_GUIDE.md):
+For detailed verification documentation, see [docs/VULNERABILITY_VERIFICATION_GUIDE.md](docs/VULNERABILITY_VERIFICATION_GUIDE.md):
 - Supported vulnerability types
 - Verification methods
 - Safety considerations
@@ -372,7 +372,7 @@ For detailed verification documentation, see [docs/user_guide/VULNERABILITY_VERI
 - Extending verification
 
 ### 📋 Enhancement Summary
-For a complete overview of all enhancements, see [CHANGELOG.md](CHANGELOG.md):
+For a complete overview of all enhancements, see [docs/CHANGELOG.md](docs/CHANGELOG.md):
 - Architecture improvements
 - Performance considerations
 - Migration notes
@@ -430,15 +430,15 @@ This is an academic research project. Contributions are welcome in the form of:
 
 Comprehensive documentation is available in the [`docs/`](docs/) directory:
 
-- **[Quick Start Guide](docs/user_guide/QUICK_START.md)** - Get up and running quickly with examples
-- **[Web Frontend Guide](docs/user_guide/WEB_FRONTEND_GUIDE.md)** - Complete web interface documentation
-- **[Verification Guide](docs/user_guide/VULNERABILITY_VERIFICATION_GUIDE.md)** - Active testing and verification
+- **[Quick Start Guide](docs/QUICK_START.md)** - Get up and running quickly with examples
+- **[Web Frontend Guide](docs/WEB_FRONTEND_GUIDE.md)** - Complete web interface documentation
+- **[Verification Guide](docs/VULNERABILITY_VERIFICATION_GUIDE.md)** - Active testing and verification
 - **[Technical Documentation](docs/technical/)** - Detailed vulnerability detection methods
 - **[Platform Guides](docs/platforms/)** - Platform-specific security analysis documentation
 - **[Architecture Guide](docs/ARCHITECTURE.md)** - System design and extension guide
-- **[Changelog](CHANGELOG.md)** - Complete history of enhancements
-- **[Development Guide](DEVELOPMENT.md)** - Development setup, testing, and contributions
-- **[Deployment Guide](DEPLOYMENT.md)** - Production deployment instructions
+- **[Changelog](docs/CHANGELOG.md)** - Complete history of enhancements
+- **[Development Guide](docs/DEVELOPMENT.md)** - Development setup, testing, and contributions
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
 - **[Documentation Index](docs/README.md)** - Complete documentation organization and standards
 
 ## License
@@ -455,17 +455,16 @@ This project is developed for academic research purposes. Please respect the ter
 
 If you use this tool in academic research, please cite:
 
-```
+```bash
 [Your Name]. (2024). Low-Code Platform Security Scanner: A Comparative Analysis Tool. 
-Bachelor Thesis, [University Name], Department of Computer Science.
+Bachelor Thesis, [Your University], Department of Computer Science.
 ```
 
 ## Contact
 
-For academic collaboration or questions about this research:
-- Email: [your-email@university.edu]
-- Thesis Supervisor: [supervisor-email@university.edu]
-- Department: Computer Science, [University Name]
+For questions, issues, or contributions:
+- GitHub Issues: [Create an issue in this repository]
+- GitHub Discussions: [Start a discussion in this repository]
 
 ---
 

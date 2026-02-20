@@ -10,29 +10,32 @@ scanning (XSS, SQLi, CSRF, Open Redirect, etc.).
 Author: Bachelor Thesis Project - Low-Code Platforms Security Analysis
 """
 
-import re
 import base64
+import re
 from typing import Any, Dict, List
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 
-from .base import BaseAnalyzer
 from .advanced_checks import AdvancedChecksMixin
+from .base import BaseAnalyzer
+from .common_web_checks import CommonWebChecksMixin
 from .verification_metadata_mixin import VerificationMetadataMixin
 from .vulnerability_detection import (
-    XSSDetector,
-    SQLInjectionDetector,
     CSRFDetector,
     OpenRedirectDetector,
+    SQLInjectionDetector,
+    XSSDetector,
 )
 
 
-class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnalyzer):
+class AirtableAnalyzer(
+    CommonWebChecksMixin, AdvancedChecksMixin, VerificationMetadataMixin, BaseAnalyzer
+):
     """
     Specialized analyzer for Airtable applications.
-    
+
     Provides comprehensive security analysis for Airtable low-code applications,
     detecting exposures of base IDs, API keys, table schemas, and permission
     configurations that could lead to unauthorized data access.
@@ -41,7 +44,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
     def __init__(self, session: requests.Session):
         """
         Initialize Airtable analyzer.
-        
+
         Args:
             session: Configured requests session for HTTP operations
         """
@@ -50,7 +53,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
         self.api_keys: List[str] = []
         self.table_schemas: List[Dict[str, Any]] = []
         self.permission_models: List[Dict[str, Any]] = []
-        
+
         # Initialize vulnerability detectors
         self.xss_detector = XSSDetector(session)
         self.sqli_detector = SQLInjectionDetector(session)
@@ -114,12 +117,12 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
         for vuln in xss_vulns:
             evidence = f"Parameter: {vuln['parameter']}, Context: {vuln['context']}"
             vulnerability = self._create_standard_vulnerability(
-                vuln['type'],
-                vuln['severity'],
+                vuln["type"],
+                vuln["severity"],
                 f"{vuln['type']} detected in parameter '{vuln['parameter']}'",
                 evidence,
                 url,
-                vuln.get('parameter', ''),
+                vuln.get("parameter", ""),
                 category="Cross-Site Scripting",
                 owasp="A03:2021 - Injection",
                 cwe=["CWE-79"],
@@ -128,10 +131,10 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                 references=[
                     "https://owasp.org/www-community/attacks/xss/",
                     "https://cwe.mitre.org/data/definitions/79.html",
-                    "https://portswigger.net/web-security/cross-site-scripting"
+                    "https://portswigger.net/web-security/cross-site-scripting",
                 ],
-                context=vuln.get('context', ''),
-                evidence_type="reflected_xss"
+                context=vuln.get("context", ""),
+                evidence_type="reflected_xss",
             )
             vulnerability["response"] = vuln.get("response")
             if vuln.get("response") is not None:
@@ -147,8 +150,8 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
         for vuln in dom_xss_vulns:
             evidence = f"Source: {vuln['source']}, Sink: {vuln['sink']}"
             self.add_enriched_vulnerability(
-                vuln['type'],
-                vuln['severity'],
+                vuln["type"],
+                vuln["severity"],
                 f"{vuln['type']} detected via DOM manipulation",
                 evidence,
                 "Avoid using dangerous DOM sinks with user-controlled data; use safe DOM APIs and validate input",
@@ -159,25 +162,25 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                 impact="DOM-based XSS is particularly dangerous as it bypasses server-side protections. Attackers can execute arbitrary JavaScript in the victim's browser context.",
                 references=[
                     "https://owasp.org/www-community/attacks/DOM_Based_XSS",
-                    "https://portswigger.net/web-security/cross-site-scripting/dom-based"
+                    "https://portswigger.net/web-security/cross-site-scripting/dom-based",
                 ],
-                parameter=vuln.get('parameter', ''),
-                url=vuln.get('url', url),
-                http_response=vuln.get('response')
+                parameter=vuln.get("parameter", ""),
+                url=vuln.get("url", url),
+                http_response=vuln.get("response"),
             )
 
         # SQL Injection Detection
         sqli_vulns = self.sqli_detector.detect_sql_injection(url, response)
         for vuln in sqli_vulns:
-            if vuln['type'] == 'SQL Injection':
+            if vuln["type"] == "SQL Injection":
                 evidence = f"Parameter: {vuln.get('parameter', 'unknown')}"
                 vulnerability = self._create_standard_vulnerability(
-                    vuln['type'],
-                    vuln['severity'],
+                    vuln["type"],
+                    vuln["severity"],
                     f"{vuln['type']} vulnerability detected in parameter '{vuln.get('parameter', 'unknown')}'",
                     evidence,
                     url,
-                    vuln.get('parameter', ''),
+                    vuln.get("parameter", ""),
                     category="Injection",
                     owasp="A03:2021 - Injection",
                     cwe=["CWE-89"],
@@ -186,9 +189,9 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     references=[
                         "https://owasp.org/www-community/attacks/SQL_Injection",
                         "https://cwe.mitre.org/data/definitions/89.html",
-                        "https://portswigger.net/web-security/sql-injection"
+                        "https://portswigger.net/web-security/sql-injection",
                     ],
-                    evidence_type="sql_injection"
+                    evidence_type="sql_injection",
                 )
                 vulnerability["response"] = vuln.get("response")
                 if vuln.get("response") is not None:
@@ -198,10 +201,10 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                         )
                     ]
                 self.vulnerabilities.append(vulnerability)
-            elif vuln['type'] == 'SQL Error Disclosure':
+            elif vuln["type"] == "SQL Error Disclosure":
                 self.add_enriched_vulnerability(
-                    vuln['type'],
-                    vuln['severity'],
+                    vuln["type"],
+                    vuln["severity"],
                     "Database error messages are being disclosed to users",
                     "SQL error patterns found in response",
                     "Configure database error handling to display generic messages to users. Log detailed errors server-side.",
@@ -212,20 +215,20 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     impact="SQL error disclosure assists attackers in crafting more precise SQL injection attacks and understanding the database schema.",
                     references=[
                         "https://cwe.mitre.org/data/definitions/209.html",
-                        "https://owasp.org/www-project-web-security-testing-guide/"
+                        "https://owasp.org/www-project-web-security-testing-guide/",
                     ],
-                    url=vuln.get('url', url),
-                    http_response=vuln.get('response')
+                    url=vuln.get("url", url),
+                    http_response=vuln.get("response"),
                 )
 
         # CSRF Detection (CRITICAL for Airtable - Burp found 28 instances)
         csrf_vulns = self.csrf_detector.detect_csrf(url, response, soup)
         for vuln in csrf_vulns:
-            if vuln['type'] == 'Cross-Site Request Forgery (CSRF)':
+            if vuln["type"] == "Cross-Site Request Forgery (CSRF)":
                 evidence = f"Form: {vuln['form_method']} {vuln['form_action']}, Missing: {vuln['missing_protection']}"
                 self.add_enriched_vulnerability(
-                    vuln['type'],
-                    vuln['severity'],
+                    vuln["type"],
+                    vuln["severity"],
                     f"{vuln['type']} vulnerability in form {vuln['form_index']}",
                     evidence,
                     "Implement anti-CSRF tokens in all state-changing forms. Verify SameSite cookie attributes. Use CSRF protection headers.",
@@ -237,15 +240,15 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     references=[
                         "https://owasp.org/www-community/attacks/csrf",
                         "https://cwe.mitre.org/data/definitions/352.html",
-                        "https://portswigger.net/web-security/csrf"
+                        "https://portswigger.net/web-security/csrf",
                     ],
-                    http_response=vuln.get('response')
+                    http_response=vuln.get("response"),
                 )
-            elif vuln['type'] == 'Weak CSRF Protection':
+            elif vuln["type"] == "Weak CSRF Protection":
                 evidence = f"Form: {vuln['form_method']} {vuln['form_action']}, Issue: {vuln['issue']}"
                 self.add_enriched_vulnerability(
-                    vuln['type'],
-                    vuln['severity'],
+                    vuln["type"],
+                    vuln["severity"],
                     f"{vuln['type']} in form {vuln['form_index']}",
                     evidence,
                     "Implement SameSite=Strict or SameSite=Lax cookies. Use double-submit cookie pattern or custom CSRF tokens.",
@@ -256,15 +259,15 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     impact="Weak CSRF protection can still allow attackers to perform unauthorized actions on behalf of authenticated users, compromising data integrity.",
                     references=[
                         "https://owasp.org/www-community/attacks/csrf",
-                        "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite"
+                        "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite",
                     ],
-                    http_response=vuln.get('response')
+                    http_response=vuln.get("response"),
                 )
-            elif vuln['type'] == 'API CSRF Vulnerability':
+            elif vuln["type"] == "API CSRF Vulnerability":
                 evidence = f"Method: {vuln['method']}, Issue: {vuln['issue']}"
                 self.add_enriched_vulnerability(
-                    vuln['type'],
-                    vuln['severity'],
+                    vuln["type"],
+                    vuln["severity"],
                     f"{vuln['type']} in API endpoint",
                     evidence,
                     "Implement CSRF tokens, verify Origin/Referer headers, or use custom headers like X-Requested-With for state-changing API calls.",
@@ -276,17 +279,19 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     references=[
                         "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html"
                     ],
-                    http_response=vuln.get('response')
+                    http_response=vuln.get("response"),
                 )
 
         # Open Redirect Detection
-        redirect_vulns = self.redirect_detector.detect_open_redirect(url, response, soup)
+        redirect_vulns = self.redirect_detector.detect_open_redirect(
+            url, response, soup
+        )
         for vuln in redirect_vulns:
-            if vuln['type'] == 'Open Redirect':
+            if vuln["type"] == "Open Redirect":
                 evidence = f"Parameter: {vuln['parameter']}"
                 self.add_enriched_vulnerability(
-                    vuln['type'],
-                    vuln['severity'],
+                    vuln["type"],
+                    vuln["severity"],
                     f"{vuln['type']} vulnerability detected in parameter '{vuln['parameter']}'",
                     evidence,
                     "Validate and whitelist redirect URLs. Use relative URLs where possible. Avoid using user input for redirect destinations.",
@@ -297,14 +302,14 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     impact="Attackers can redirect users to phishing sites, malware distribution, or malicious content, bypassing URL filtering and trust indicators.",
                     references=[
                         "https://cwe.mitre.org/data/definitions/601.html",
-                        "https://owasp.org/www-project-web-security-testing-guide/"
+                        "https://owasp.org/www-project-web-security-testing-guide/",
                     ],
-                    http_response=vuln.get('response')
-            )
-            elif vuln['type'] == 'Open Redirect via Meta Refresh':
+                    http_response=vuln.get("response"),
+                )
+            elif vuln["type"] == "Open Redirect via Meta Refresh":
                 self.add_enriched_vulnerability(
-                    vuln['type'],
-                    vuln['severity'],
+                    vuln["type"],
+                    vuln["severity"],
                     "Open redirect via meta refresh tag detected",
                     "Meta refresh with user-controlled URL parameter",
                     "Validate redirect URLs before using them in meta refresh tags. Use server-side redirects with proper validation.",
@@ -313,15 +318,13 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     cwe=["CWE-601"],
                     background="Meta refresh tags can be abused for open redirect attacks if they incorporate user-controlled input.",
                     impact="Similar to standard open redirects, this can be used for phishing and malware distribution, exploiting user trust.",
-                    references=[
-                        "https://cwe.mitre.org/data/definitions/601.html"
-                    ],
-                    http_response=vuln.get('response')
+                    references=["https://cwe.mitre.org/data/definitions/601.html"],
+                    http_response=vuln.get("response"),
                 )
-            elif vuln['type'] == 'Potential Open Redirect via JavaScript':
+            elif vuln["type"] == "Potential Open Redirect via JavaScript":
                 self.add_enriched_vulnerability(
-                    vuln['type'],
-                    vuln['severity'],
+                    vuln["type"],
+                    vuln["severity"],
                     "Potential open redirect via JavaScript detected",
                     "JavaScript redirect code with user input",
                     "Review JavaScript redirect code to ensure URLs are validated and sanitized before use.",
@@ -330,10 +333,8 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     cwe=["CWE-601"],
                     background="JavaScript-based redirects can be exploited for phishing if they incorporate user-controlled input without validation.",
                     impact="Attackers can craft malicious URLs that redirect victims to phishing sites or malicious content, exploiting user trust.",
-                    references=[
-                        "https://cwe.mitre.org/data/definitions/601.html"
-                    ],
-                    http_response=vuln.get('response')
+                    references=["https://cwe.mitre.org/data/definitions/601.html"],
+                    http_response=vuln.get("response"),
                 )
 
         return {
@@ -360,9 +361,9 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
 
         # Airtable Base ID patterns (17 characters starting with app)
         base_id_patterns = [
-            r'app[A-Za-z0-9]{15}',
+            r"app[A-Za-z0-9]{15}",
             r'base["\']?\s*[:=]\s*["\'](app[A-Za-z0-9]{15})["\']',
-            r'airtable\.com/([a-zA-Z0-9]{17})',
+            r"airtable\.com/([a-zA-Z0-9]{17})",
         ]
 
         content = js_content + html_content
@@ -371,13 +372,13 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
             for match in matches:
                 if match not in self.base_ids:
                     self.base_ids.append(match)
-                    
+
                     # Create evidence pattern for Base ID highlighting
                     base_id_evidence = {
                         "type": "regex",
-                        "pattern": rf"(?i){re.escape(match)}"
+                        "pattern": rf"(?i){re.escape(match)}",
                     }
-                    
+
                     self.add_enriched_vulnerability(
                         "Airtable Base ID Exposure",
                         "Medium",
@@ -408,7 +409,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
 
         # Airtable API key patterns (starts with key)
         api_key_patterns = [
-            r'key[A-Za-z0-9]{14,}',
+            r"key[A-Za-z0-9]{14,}",
             r'api[_-]?key["\']?\s*[:=]\s*["\'](key[A-Za-z0-9]{14,})["\']',
             r'authorization["\']?\s*[:=]\s*["\']Bearer\s+(key[A-Za-z0-9]{14,})["\']',
         ]
@@ -419,13 +420,13 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
             for match in matches:
                 if match not in self.api_keys:
                     self.api_keys.append(match)
-                    
+
                     # Create evidence pattern for API key highlighting
                     api_key_evidence = {
                         "type": "regex",
-                        "pattern": rf"(?i){re.escape(match[:20])}"
+                        "pattern": rf"(?i){re.escape(match[:20])}",
                     }
-                    
+
                     self.add_enriched_vulnerability(
                         "Airtable API Key Exposure",
                         "Critical",
@@ -467,13 +468,16 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
             matches = re.findall(pattern, js_content, re.IGNORECASE)
             for match in matches:
                 if isinstance(match, tuple):
-                    match = ' '.join(match)
-                
+                    match = " ".join(match)
+
                 if match not in self.table_schemas:
                     self.table_schemas.append(match)
-                    
+
                     # Check for sensitive field names
-                    if any(sensitive in match.lower() for sensitive in ["email", "password", "phone", "ssn", "credit"]):
+                    if any(
+                        sensitive in match.lower()
+                        for sensitive in ["email", "password", "phone", "ssn", "credit"]
+                    ):
                         self.add_enriched_vulnerability(
                             "Sensitive Table Field Exposure",
                             "Medium",
@@ -522,7 +526,9 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     self.permission_models.append(match)
 
         # Check for public access
-        if any(perm.lower() in ["public", "anyone", "all"] for perm in permissions_found):
+        if any(
+            perm.lower() in ["public", "anyone", "all"] for perm in permissions_found
+        ):
             self.add_enriched_vulnerability(
                 "Public Access Configuration",
                 "High",
@@ -555,10 +561,10 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
 
         # Data access patterns
         access_patterns = [
-            r'select\([^)]*\)',
-            r'query\([^)]*\)',
-            r'filter\([^)]*\)',
-            r'sort\([^)]*\)',
+            r"select\([^)]*\)",
+            r"query\([^)]*\)",
+            r"filter\([^)]*\)",
+            r"sort\([^)]*\)",
         ]
 
         for pattern in access_patterns:
@@ -569,9 +575,9 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     # Create evidence pattern for data access highlighting
                     data_access_evidence = {
                         "type": "regex",
-                        "pattern": rf"(?i){re.escape(match)}"
+                        "pattern": rf"(?i){re.escape(match)}",
                     }
-                    
+
                     self.add_enriched_vulnerability(
                         "Unsafe Data Access Pattern",
                         "Medium",
@@ -599,18 +605,27 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
         """Check for session tokens in URL"""
         # More comprehensive list of session/auth related parameters
         token_params = [
-            "session", "token", "sid", "auth", "state", "nonce", "code",
-            "access_token", "id_token", "session_id", "session_code"
+            "session",
+            "token",
+            "sid",
+            "auth",
+            "state",
+            "nonce",
+            "code",
+            "access_token",
+            "id_token",
+            "session_id",
+            "session_code",
         ]
-        pattern = r'[?&](' + '|'.join(token_params) + r')='
-        
+        pattern = r"[?&](" + "|".join(token_params) + r")="
+
         if re.search(pattern, url, re.IGNORECASE):
             # Create evidence pattern for session token highlighting
             session_evidence = {
                 "type": "regex",
-                "pattern": r"(?i)[?&](" + "|".join(token_params) + r")=[^&\s]*"
+                "pattern": r"(?i)[?&](" + "|".join(token_params) + r")=[^&\s]*",
             }
-            
+
             self.add_enriched_vulnerability(
                 "Session Token in URL",
                 "Medium",
@@ -636,7 +651,6 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     "https://cwe.mitre.org/data/definitions/523.html",
                 ],
             )
-
 
     def _check_secrets_in_javascript(self, js_content: str, url: str):
         """Check for secrets in JavaScript"""
@@ -741,7 +755,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     references=[
                         "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#Secure",
                         "https://cwe.mitre.org/data/definitions/614.html",
-                        "https://owasp.org/www-community/vulnerabilities/Insecure_Cookie"
+                        "https://owasp.org/www-community/vulnerabilities/Insecure_Cookie",
                     ],
                 )
 
@@ -766,7 +780,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     ),
                     references=[
                         "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#HttpOnly",
-                        "https://cwe.mitre.org/data/definitions/1004.html"
+                        "https://cwe.mitre.org/data/definitions/1004.html",
                     ],
                 )
 
@@ -795,7 +809,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                 ),
                 references=[
                     "https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP",
-                    "https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html"
+                    "https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html",
                 ],
             )
         else:
@@ -803,16 +817,21 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
             csp_lower = csp.lower()
             if "unsafe-inline" in csp_lower:
                 severity = "Medium"
-                description = "Content Security Policy contains 'unsafe-inline' directive"
-                
+                description = (
+                    "Content Security Policy contains 'unsafe-inline' directive"
+                )
+
                 if "style-src" in csp_lower and "unsafe-inline" in csp_lower:
                     description += ", allowing arbitrary style execution"
-                    
+
                 self.add_enriched_vulnerability(
                     "Weak Content Security Policy",
                     severity,
                     description,
-                    {"type": "exact", "pattern": f"Content-Security-Policy: {csp[:200]}"},
+                    {
+                        "type": "exact",
+                        "pattern": f"Content-Security-Policy: {csp[:200]}",
+                    },
                     "Remove 'unsafe-inline' from CSP directives. Use nonces or hashes instead.",
                     category="Security Headers",
                     owasp="A05:2021 - Security Misconfiguration",
@@ -828,17 +847,20 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     ),
                     references=[
                         "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/style-src",
-                        "https://portswigger.net/research/blind-css-exfiltration"
+                        "https://portswigger.net/research/blind-css-exfiltration",
                     ],
                 )
-            
+
             # Check for missing form-action (allows form hijacking)
             if "form-action" not in csp_lower:
                 self.add_enriched_vulnerability(
                     "Weak Content Security Policy",
                     "Low",
                     "CSP lacks 'form-action' directive, allowing potential form hijacking",
-                    {"type": "exact", "pattern": f"Content-Security-Policy: {csp[:200]}"},
+                    {
+                        "type": "exact",
+                        "pattern": f"Content-Security-Policy: {csp[:200]}",
+                    },
                     "Add a 'form-action' directive to your CSP to restrict where forms can be submitted.",
                     category="Security Headers",
                     owasp="A05:2021 - Security Misconfiguration",
@@ -853,10 +875,10 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     ),
                     references=[
                         "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/form-action",
-                        "https://portswigger.net/web-security/cross-site-scripting/content-security-policy"
+                        "https://portswigger.net/web-security/cross-site-scripting/content-security-policy",
                     ],
                 )
-            
+
             # Check for other weak patterns
             weak_patterns = ["unsafe-eval", "*", "data:"]
             found_weak = [p for p in weak_patterns if p in csp_lower]
@@ -865,14 +887,17 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     "Weak Content Security Policy",
                     "Low",
                     f"CSP contains weak directives: {', '.join(found_weak)}",
-                    {"type": "exact", "pattern": f"Content-Security-Policy: {csp[:200]}"},
+                    {
+                        "type": "exact",
+                        "pattern": f"Content-Security-Policy: {csp[:200]}",
+                    },
                     "Review and tighten CSP directives to follow the principle of least privilege.",
                     category="Security Headers",
                     owasp="A05:2021 - Security Misconfiguration",
                     cwe=["CWE-693"],
                     background="Weak CSP directives like '*' or 'unsafe-eval' provide limited protection against sophisticated attacks.",
                     impact="Attackers may be able to bypass CSP to execute arbitrary code or load malicious resources.",
-                    references=["https://csp-evaluator.withgoogle.com/"]
+                    references=["https://csp-evaluator.withgoogle.com/"],
                 )
 
     def _check_clickjacking(self, response: requests.Response):
@@ -912,7 +937,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                 "type": "exact",
                 "pattern": f"X-Frame-Options: {xfo}",
             }
-            
+
             self.add_enriched_vulnerability(
                 "Weak Clickjacking Protection",
                 "Low",
@@ -937,27 +962,26 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                 ],
             )
 
-    def _check_information_disclosure(self, js_content: str, html_content: str, response: requests.Response):
+    def _check_information_disclosure(
+        self, js_content: str, html_content: str, response: requests.Response
+    ):
         """Check for information disclosure"""
         error_patterns = [
             r'error[:\s]+["\']([^"\']+)["\']',
             r'exception[:\s]+["\']([^"\']+)["\']',
-            r'stack\s*trace',
+            r"stack\s*trace",
         ]
-        
+
         # Email address pattern
-        email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+        email_pattern = r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
 
         content = js_content + html_content
-        
+
         for pattern in error_patterns:
             if re.search(pattern, content, re.IGNORECASE):
                 # Create evidence pattern for error highlighting
-                error_evidence = {
-                    "type": "regex",
-                    "pattern": pattern
-                }
-                
+                error_evidence = {"type": "regex", "pattern": pattern}
+
                 self.add_enriched_vulnerability(
                     "Information Disclosure",
                     "Low",
@@ -1000,23 +1024,27 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                 cwe=["CWE-200"],
                 background="Disclosure of email addresses can facilitate phishing attacks and reconnaissance.",
                 impact="Attackers can use discovered email addresses for targeted phishing or social engineering attacks.",
-                references=["https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/03-Identity_Management_Testing/01-Test_Role_Definitions"]
+                references=[
+                    "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/03-Identity_Management_Testing/01-Test_Role_Definitions"
+                ],
             )
 
-    def _check_reflected_input(self, url: str, response: requests.Response, html_content: str):
+    def _check_reflected_input(
+        self, url: str, response: requests.Response, html_content: str
+    ):
         """Check for reflected input (potential XSS)"""
         parsed = urlparse(url)
         params = parse_qs(parsed.query)
-        
+
         for param, values in params.items():
             for value in values:
                 if value in html_content:
                     # Create evidence pattern for reflected input highlighting
                     reflected_evidence = {
                         "type": "regex",
-                        "pattern": rf"(?i){re.escape(value)}"
+                        "pattern": rf"(?i){re.escape(value)}",
                     }
-                    
+
                     self.add_enriched_vulnerability(
                         "Reflected Input (Potential XSS)",
                         "Medium",
@@ -1052,7 +1080,10 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
         pragma = response.headers.get("Pragma", "")
         cache_control_lower = cache_control.lower()
 
-        if any(directive in cache_control_lower for directive in ["no-store", "no-cache", "private"]):
+        if any(
+            directive in cache_control_lower
+            for directive in ["no-store", "no-cache", "private"]
+        ):
             return
 
         if "no-cache" in pragma.lower():
@@ -1121,9 +1152,9 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     # Create evidence pattern for redirect highlighting
                     redirect_evidence = {
                         "type": "regex",
-                        "pattern": rf"(?i){re.escape(match)}"
+                        "pattern": rf"(?i){re.escape(match)}",
                     }
-                    
+
                     self.add_enriched_vulnerability(
                         "Open Redirection",
                         "Medium",
@@ -1153,9 +1184,9 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
     def _check_ajax_header_manipulation(self, js_content: str):
         """Check for AJAX header manipulation"""
         ajax_patterns = [
-            r'XMLHttpRequest',
-            r'fetch\s*\(',
-            r'\.ajax\s*\(',
+            r"XMLHttpRequest",
+            r"fetch\s*\(",
+            r"\.ajax\s*\(",
         ]
 
         for pattern in ajax_patterns:
@@ -1163,11 +1194,8 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                 # Check for proper headers
                 if "X-Requested-With" not in js_content:
                     # Create evidence pattern for AJAX highlighting
-                    ajax_evidence = {
-                        "type": "regex",
-                        "pattern": pattern
-                    }
-                    
+                    ajax_evidence = {"type": "regex", "pattern": pattern}
+
                     self.add_enriched_vulnerability(
                         "Missing AJAX Security Headers",
                         "Low",
@@ -1238,12 +1266,14 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     max_age = int(hsts_lower.split("max-age=")[1].split(";")[0])
                 except (ValueError, IndexError):
                     max_age = None
-            if "max-age=0" in hsts_lower or (max_age is not None and max_age < 31536000):
+            if "max-age=0" in hsts_lower or (
+                max_age is not None and max_age < 31536000
+            ):
                 hsts_evidence = {
                     "type": "exact",
                     "pattern": f"Strict-Transport-Security: {hsts}",
                 }
-                
+
                 self.add_enriched_vulnerability(
                     "Weak HSTS Configuration",
                     "Low",
@@ -1284,7 +1314,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                 }
             else:
                 xcto_evidence = []  # No header to highlight when missing
-                
+
             self.add_enriched_vulnerability(
                 "Missing X-Content-Type-Options",
                 "Info",
@@ -1339,11 +1369,11 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                 ),
                 references=[
                     "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy",
-                    "https://owasp.org/www-project-cheat-sheets/cheatsheets/HTTP_Headers_Cheat_Sheet.html#referrer-policy"
+                    "https://owasp.org/www-project-cheat-sheets/cheatsheets/HTTP_Headers_Cheat_Sheet.html#referrer-policy",
                 ],
             )
         elif rp.lower() in ["unsafe-url", "no-referrer-when-downgrade"]:
-             self.add_enriched_vulnerability(
+            self.add_enriched_vulnerability(
                 "Weak Referrer-Policy Configuration",
                 "Low",
                 f"Weak Referrer-Policy value: {rp}",
@@ -1354,7 +1384,9 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                 cwe=["CWE-116"],
                 background="Weak Referrer-Policy values may leak full URLs including query parameters to third-party sites.",
                 impact="Sensitive information in the URL can be disclosed to third-party sites.",
-                references=["https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy"]
+                references=[
+                    "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy"
+                ],
             )
 
     def _check_permissions_policy(self, response: requests.Response):
@@ -1382,7 +1414,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                 ),
                 references=[
                     "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permissions-Policy",
-                    "https://w3c.github.io/webappsec-permissions-policy/"
+                    "https://w3c.github.io/webappsec-permissions-policy/",
                 ],
             )
 
@@ -1391,11 +1423,11 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
         if hasattr(self, "_is_html_response") and not self._is_html_response(response):
             return
         headers = response.headers
-        
+
         # X-XSS-Protection
         xxp = headers.get("X-XSS-Protection", "")
         if not xxp:
-             self.add_enriched_vulnerability(
+            self.add_enriched_vulnerability(
                 "Missing X-XSS-Protection Header",
                 "Info",
                 "No X-XSS-Protection header found",
@@ -1406,7 +1438,9 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                 cwe=["CWE-693"],
                 background="The X-XSS-Protection header is a legacy feature that enabled the browser's reflected XSS filter. Most modern browsers now recommend disabling it in favor of a strong CSP.",
                 impact="Minimal impact in modern browsers, but its absence may be flagged in compliance audits.",
-                references=["https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection"]
+                references=[
+                    "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection"
+                ],
             )
 
         # X-Permitted-Cross-Domain-Policies
@@ -1423,15 +1457,17 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                 cwe=["CWE-16"],
                 background="This header tells clients like Flash and Adobe Reader what cross-domain policies are allowed for the site.",
                 impact="Minimal impact unless the application serves Flash or PDF content to cross-domain clients.",
-                references=["https://owasp.org/www-project-secure-headers/index.html#x-permitted-cross-domain-policies"]
+                references=[
+                    "https://owasp.org/www-project-secure-headers/index.html#x-permitted-cross-domain-policies"
+                ],
             )
 
     def _check_vulnerable_dependencies(self, js_content: str):
         """Check for potentially vulnerable dependencies"""
         library_patterns = [
-            r'jquery[-.]?(\d+\.[\d\.]+)',
-            r'bootstrap[-.]?(\d+\.[\d\.]+)',
-            r'angular[-.]?(\d+\.[\d\.]+)',
+            r"jquery[-.]?(\d+\.[\d\.]+)",
+            r"bootstrap[-.]?(\d+\.[\d\.]+)",
+            r"angular[-.]?(\d+\.[\d\.]+)",
         ]
 
         for pattern in library_patterns:
@@ -1442,9 +1478,9 @@ class AirtableAnalyzer(AdvancedChecksMixin, VerificationMetadataMixin, BaseAnaly
                     # Create evidence pattern for library version highlighting
                     dependency_evidence = {
                         "type": "regex",
-                        "pattern": rf"(?i){re.escape(version)}"
+                        "pattern": rf"(?i){re.escape(version)}",
                     }
-                    
+
                     self.add_enriched_vulnerability(
                         "Potentially Vulnerable Dependency",
                         "Low",

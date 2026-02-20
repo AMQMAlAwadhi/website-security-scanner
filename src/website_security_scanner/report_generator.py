@@ -1227,7 +1227,7 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
             # Use references from vulnerability data, fallback to CWE links if no references
             references = item.get('references', [])
             if references:
-                ref_links = ', '.join([f"<a href='{ref}' target='_blank'>{ref.split('/')[-1] if '/' in ref else ref}</a>" for ref in references[:2]])
+                ref_links = ', '.join([f"<a href='{ref}' target='_blank'>{ref}</a>" for ref in references[:2]])
             else:
                 # Fallback to CWE links if no references
                 cwe_list = item.get('cwe', [])
